@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+httpx
+google-generativeai
+emoji
+websockets==12.0
