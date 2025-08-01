@@ -135,13 +135,15 @@ class Amaya:
 
             if response_messages:
                 for i, message in enumerate(response_messages):
+                    if i == 0:
+                        delay = max(message.get("delay seconds") - 5, 0)  # 解决首次消息回复耗时过长的问题
                     delay = message.get("delay seconds", 1)
                     await asyncio.sleep(delay)
-                    
+
                     content = message.get("content", "...")
                     # 1. 发送消息，这是IO操作，可能被打断
                     await reply_callback(message)
-                    
+
                     # 2. 消息发送成功后，立即同步记录所有相关信息
                     # 这是核心修复：确保只有真正发送了的消息才会被记录
                     event_logger.log_event('AMAYA_RESPONSE', {'content': content, 'delay': delay, 'user_id': self.state.user_id})
