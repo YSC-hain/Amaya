@@ -137,7 +137,8 @@ class Amaya:
                 for i, message in enumerate(response_messages):
                     if i == 0:
                         delay = max(message.get("delay seconds") - 5, 0)  # 解决首次消息回复耗时过长的问题
-                    delay = message.get("delay seconds", 1)
+                    else:
+                        delay = message.get("delay seconds", 1)
                     await asyncio.sleep(delay)
 
                     content = message.get("content", "...")
