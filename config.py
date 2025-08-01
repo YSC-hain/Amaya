@@ -18,7 +18,7 @@ DEFAULT_USER_ID = "user_default"
 API_ENDPOINT = "yunwu.ai"
 
 # 模型 ID
-MODEL_ID = "gemini-2.5-flash-preview-05-20"
+MODEL_ID = "gemini-2.5-pro-preview-06-05" # "gemini-2.5-flash-preview-05-20"
 
 # 你的 API 密钥
 # 重要: 请将 "your_secret_api_key" 替换为你的真实密钥
