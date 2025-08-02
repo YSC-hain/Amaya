@@ -39,10 +39,17 @@ class Memory:
 
 
     def get_short_term_memory_for_prompt(self) -> list[dict]:
-        """为Prompt准备短期记忆。"""
+        """为Prompt准备短期记忆，并在每条消息前加上时间戳。"""
         with self.lock:
-            # 返回一个副本以避免在迭代时发生并发修改问题
-            return list(self.state.short_term_memory)
+            # 创建一个新的列表，其中包含带有时间戳的格式化消息
+            formatted_memory = []
+            for mem in self.state.short_term_memory:
+                formatted_content = f"[{mem['timestamp']}] {mem['content']}"
+                formatted_memory.append({
+                    "role": mem["role"],
+                    "content": formatted_content
+                })
+            return formatted_memory
 
     def prune_short_term_memory(self):
         """如果短期记忆超过Token限制，则从最旧的开始移除。此方法应在锁的保护下调用。"""
