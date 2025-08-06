@@ -60,7 +60,7 @@ class Amaya:
             event_logger.log_event('DB_ERROR', {'error': f"Failed to save state on exit for user {self.state.user_id}: {e}"})
 
     def _run_simulation_sync(self):
-        """此函数在单独的线程中运行，以与真实时间同步。"""
+        """此函数在单独的线程中运行。与真实时间同步并检查是否有任务需要执行"""
         while self.is_running:
             self.world.tick()
             current_minute = self.state.current_time.minute
