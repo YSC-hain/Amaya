@@ -13,11 +13,29 @@ from modules.psychological_model import Psychology
 from modules.memory_manager import Memory
 from modules.scheduler import Scheduler
 from modules.autonomous_agent import Agent
-from modules.logger import event_logger
+from modules.logger import event_logger, disable_console_logging
 from modules.persistence_manager import PersistenceManager
+from onebot_adapter import OneBotAdapter
 
 # 定义回调函数的类型签名
 ReplyCallback = Callable[[Dict[str, Any]], Awaitable[None]]
+
+# 使用一个字典来管理不同用户的 Amaya 实例
+active_sessions: Dict[str, 'Amaya'] = {}
+
+def get_or_create_session(user_id: str) -> 'Amaya':
+    """
+    获取或创建一个新的 Amaya 会话实例。
+    """
+    if user_id not in active_sessions:
+        event_logger.log_event('SESSION_CREATE', {'user_id': user_id})
+        print(f"为用户 {user_id} 创建新的会话...")
+        amaya_instance = Amaya(user_id=user_id)
+        amaya_instance.start() # 仅启动后台模拟线程
+        active_sessions[user_id] = amaya_instance
+        print(f"用户 {user_id} 的会话已启动。")
+    return active_sessions[user_id]
+
 
 class Amaya:
     def __init__(self, user_id: str):
@@ -136,7 +154,7 @@ class Amaya:
             if response_messages:
                 for i, message in enumerate(response_messages):
                     if i == 0:
-                        delay = max(message.get("delay seconds") - 5, 0)  # 解决首次消息回复耗时过长的问题
+                        delay = max(message.get("delay seconds", 5) - 5, 0)  # 解决首次消息回复耗时过长的问题
                     else:
                         delay = message.get("delay seconds", 1)
                     await asyncio.sleep(delay)
@@ -217,68 +235,92 @@ class Amaya:
         print(f"交互模式: {self.state.interaction_mode}")
         print("------------------------------")
 
-async def main_cli():
-    """用于启动命令行交互版本的主异步函数。"""
-    user_id_input = await asyncio.to_thread(input, "请输入你的用户ID (直接回车将使用默认ID): ")
-    user_id = user_id_input.strip() or config.DEFAULT_USER_ID
-    if not user_id_input:
-        print(f"未检测到输入，已使用默认ID: {user_id}")
 
-    amaya = Amaya(user_id=user_id)
-    amaya.start()
+# -- 应用关闭事件 --
+def shutdown_sessions():
+    print("程序正在关闭...")
+    for user_id, amaya_instance in active_sessions.items():
+        print(f"正在为用户 {user_id} 保存状态并关闭会话...")
+        amaya_instance.stop()
+    print("所有会话已关闭。")
 
-    print("输入 'quit' 退出, 'status' 查看状态。")
-    print("你可以在下方与她互动。")
-    amaya.print_status()
 
-    # --- 使用 Producer-Consumer 模式重构CLI --- #
+class OneBotMessageHandler:
+    """处理 OneBot 消息的类，避免循环引用问题"""
+    def __init__(self):
+        self.onebot_adapter = None
+    
+    def set_adapter(self, adapter):
+        """设置适配器实例"""
+        self.onebot_adapter = adapter
+    
+    async def handle_message(self, event: Dict[str, Any]):
+        """
+        处理从 OneBot 适配器接收到的消息事件。
+        """
+        if event.get("post_type") == "message" and event.get("message_type") == "private":
+            user_id = str(event.get("user_id"))
+            message_text = str(event.get("raw_message", "")).strip()
 
-    input_queue = asyncio.Queue()
-    loop = asyncio.get_running_loop()
+            amaya = get_or_create_session(user_id)
 
-    # 1. Producer: 在后台线程中运行阻塞的input()，并将结果放入异步队列
-    def input_producer(queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
-        while True:
-            line = input("")
-            # 将阻塞的操作结果安全地提交到主事件循环的队列中
-            loop.call_soon_threadsafe(queue.put_nowait, line)
-            if line.lower() == 'quit':
-                break
+            # 定义一个 OneBot 特定的回调函数
+            async def onebot_reply_callback(response_message: Dict[str, Any]):
+                content = response_message.get("content", "...")
+                if self.onebot_adapter:
+                    await self.onebot_adapter.send_api_call(
+                        action="send_private_msg",
+                        params={"user_id": int(user_id), "message": content}
+                    )
 
-    producer_thread = threading.Thread(target=input_producer, args=(input_queue, loop), daemon=True)
-    producer_thread.start()
+            # 调用 Amaya 的核心处理逻辑，并传入 OneBot 的回调
+            await amaya.process_user_input(message_text, onebot_reply_callback)
 
-    # 2. Consumer: 异步地从队列中获取输入并处理
-    async def console_reply_callback(message: Dict[str, Any]):
-        content = message.get("content", "...")
-        print(f"Amaya: {content}")
 
-    try:
-        while True:
-            user_input = await input_queue.get()
-
-            if user_input.lower() == 'quit':
-                break
-            if user_input.lower() == 'status':
-                amaya.print_status()
-                continue
-
-            # 将核心处理逻辑作为一个独立的任务在后台运行
-            # 这使得主循环可以立即返回并等待下一个输入，从而实现打断
-            asyncio.create_task(amaya.process_user_input(user_input, console_reply_callback))
-
-    finally:
-        amaya.stop()
-
-if __name__ == "__main__":
+async def main():
+    """
+    主函数，负责启动 OneBot 适配器和 Amaya 的自主行动循环。
+    """
     print("========================================")
-    print("  Amaya - 命令行交互模式  ")
+    print("  Amaya - 主程序启动  ")
     print("========================================")
-    # 在直接运行时，禁用控制台日志以保持界面清洁
-    from modules.logger import disable_console_logging
+
+    # 禁用控制台日志以保持界面清洁，日志将仅写入文件
     disable_console_logging()
     print("[注意] 控制台日志已禁用，日志将仅写入 amaya_log.jsonl 文件。")
+
+    # 创建消息处理器实例
+    message_handler = OneBotMessageHandler()
+    
+    # 初始化 OneBot 适配器
+    onebot_adapter = OneBotAdapter(message_handler=message_handler.handle_message)
+    
+    # 设置适配器实例，解决循环引用问题
+    message_handler.set_adapter(onebot_adapter)
+
+    # 启动 OneBot 适配器任务
+    onebot_task = asyncio.create_task(onebot_adapter.run())
+
+    # --- Amaya 自主行动主循环 (未来实现) ---
+    # 这里可以添加 Amaya 的自主行动逻辑，例如定时任务、环境感知等
+    # 目前只是一个简单的循环，防止程序退出
     try:
-        asyncio.run(main_cli())
+        while True:
+            # print("[主循环] Amaya 正在自主行动...") # 避免频繁打印
+            await asyncio.sleep(60) # 每分钟检查一次，或根据需要调整
+
+    except asyncio.CancelledError:
+        print("主循环被取消。" )
+    finally:
+        onebot_task.cancel()
+        await onebot_task # 等待 OneBot 任务完成取消
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("\n检测到手动中断，正在关闭...")
+    finally:
+        shutdown_sessions()
+        print("程序已完全关闭。")
