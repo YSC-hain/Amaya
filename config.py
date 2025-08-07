@@ -1,4 +1,9 @@
 import os
+from dotenv import load_dotenv
+
+# 加载 .env 文件中的环境变量
+# 这允许我们通过 .env 文件轻松配置，而无需硬编码或手动设置环境变量
+load_dotenv()
 
 # -- OneBot V11 配置 --
 # 你的 OneBot 实现 (如 NapCat) 的正向 WebSocket API 地址
