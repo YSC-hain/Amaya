@@ -71,18 +71,18 @@ class PersistenceManager:
                     )
                 ''')
 
-                    # 检查当前用户是否存在，如果不存在则插入默认状态
-                    cursor.execute("SELECT user_id FROM user_states WHERE user_id = ?", (self.user_id,))
-                    if cursor.fetchone() is None:
-                        default_state = AmayaState(self.user_id)  # 创建一个默认状态实例
-                        cursor.execute('''
-                            INSERT INTO user_states (user_id, energy, mood, favorability, current_action, interaction_mode)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        ''', (
-                            self.user_id, default_state.energy, default_state.mood, 
-                            default_state.favorability, default_state.current_action, default_state.interaction_mode
-                        ))
-                        event_logger.log_event('USER_CREATED_IN_DB', {'user_id': self.user_id})
+                # 检查当前用户是否存在，如果不存在则插入默认状态
+                cursor.execute("SELECT user_id FROM user_states WHERE user_id = ?", (self.user_id,))
+                if cursor.fetchone() is None:
+                    default_state = AmayaState(self.user_id)  # 创建一个默认状态实例
+                    cursor.execute('''
+                        INSERT INTO user_states (user_id, energy, mood, favorability, current_action, interaction_mode)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (
+                        self.user_id, default_state.energy, default_state.mood, 
+                        default_state.favorability, default_state.current_action, default_state.interaction_mode
+                    ))
+                    event_logger.log_event('USER_CREATED_IN_DB', {'user_id': self.user_id})
 
             event_logger.log_event('DB_INITIALIZED_FOR_USER', {'db_path': self.db_path, 'user_id': self.user_id})
         except sqlite3.Error as e:
