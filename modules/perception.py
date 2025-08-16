@@ -1,7 +1,7 @@
 import datetime
 
 class Perception_Layer():
-    def format_message(message):
+    def format_message(self, message):
         now_time_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         result = ''
