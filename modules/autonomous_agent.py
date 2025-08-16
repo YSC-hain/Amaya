@@ -36,10 +36,10 @@ class Agent:
         state_dict = {
             "world_status": {
                 "time": self.state.current_time.strftime('%Y-%m-%d %H:%M:%S')
-            },
+            },'''
             "physiology_status": {
                 "energy": f"{int(self.state.energy)}/100"
-            },
+            },'''
             "psychology_status": {
                 "mood": self.state.mood,
                 "favorability": self.state.favorability
