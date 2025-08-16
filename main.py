@@ -17,7 +17,7 @@ from modules.logger import event_logger, disable_console_logging
 from modules.persistence_manager import PersistenceManager
 from onebot_adapter import OneBotAdapter
 
-from modules.perception
+from modules.perception import Perception_Layer
 
 # 定义回调函数的类型签名
 ReplyCallback = Callable[[Dict[str, Any]], Awaitable[None]]
@@ -251,6 +251,7 @@ class OneBotMessageHandler:
     """处理 OneBot 消息的类，避免循环引用问题"""
     def __init__(self):
         self.onebot_adapter = None
+        self.perception = Perception_Layer()
     
     def set_adapter(self, adapter):
         """设置适配器实例"""
@@ -262,7 +263,7 @@ class OneBotMessageHandler:
         """
         if event.get("post_type") == "message" and event.get("message_type") == "private":
             user_id = str(event.get("user_id"))
-            message_text = perception.format_message(event.get('message'))
+            message_text = self.perception.format_message(event.get('message'))
 
             amaya = get_or_create_session(user_id)
 
