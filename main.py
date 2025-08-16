@@ -17,6 +17,8 @@ from modules.logger import event_logger, disable_console_logging
 from modules.persistence_manager import PersistenceManager
 from onebot_adapter import OneBotAdapter
 
+from modules.perception
+
 # 定义回调函数的类型签名
 ReplyCallback = Callable[[Dict[str, Any]], Awaitable[None]]
 
@@ -260,7 +262,7 @@ class OneBotMessageHandler:
         """
         if event.get("post_type") == "message" and event.get("message_type") == "private":
             user_id = str(event.get("user_id"))
-            message_text = str(event.get("raw_message", "")).strip()
+            message_text = perception.format_message(event.get('message'))
 
             amaya = get_or_create_session(user_id)
 
