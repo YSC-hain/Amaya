@@ -1,5 +1,5 @@
 # Amaya 设计文档
-Version：1.0.0-260129
+Version：1.1.0-260202
 
 ## 项目定位
 Amaya 是面向单用户的个人助手。未来可能支持多用户部署，但每个用户的数据完全独立存储。
@@ -111,14 +111,11 @@ class WorkingMemory:
 ## 大致架构
 
 ### src/llm/ - LLM 模块
-设计模式：工厂模式
+设计模式：依赖注入
 
-- base.py: 抽象基类 LLMClient
-- factory.py: 工厂类 LLMClientFactory
+- base.py: 抽象基类 LLMClient, 数据模型（Message, FunctionCall, LLMResponse 等）, 异常定义（LLMError, LLMUnavailableError 等）
 - openai_client.py: OpenAI 兼容接口实现
 - mock_client.py: Mock 实现，开启一个新的终端窗口输出请求内容，并接受用户的输入作为 LLM 的返回；支持 Function Call
-- models.py: 数据模型（Message, FunctionCall, LLMResponse 等）
-- exceptions.py: 异常定义（LLMError, LLMUnavailableError 等）
 
 ### src/messaging/ - 通讯模块（Telegram Bot 实现）
 
