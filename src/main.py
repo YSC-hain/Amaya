@@ -9,7 +9,7 @@ import asyncio
 import signal
 from channels.telegram_polling import main as telegram_main
 import core.orchestrator  # noqa: F401 用于注册事件处理程序
-
+import storage.db_config
 
 shutdown_event = asyncio.Event()
 

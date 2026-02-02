@@ -16,6 +16,7 @@ class Amaya:
         self.fast_llm_client = OpenAIClient(model=LLM_FAST_MODEL, inst=CORE_SYSTEM_PROMPT)
     
     async def process_msg(self, msg: IncomingMessage) -> None:
+        # ToDo
         llm_context: List[Dict[str, str]] = [
             {
                 "role": "user",
@@ -28,6 +29,7 @@ class Amaya:
         logger.info(f"LLM响应时间: {end_time - start_time:.2f} 秒")
 
         return res
+
 
 amaya = Amaya()
 
@@ -50,6 +52,6 @@ async def main_loop(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
     logger.info("Orchestrator 主循环已启动")
     while not shutdown_event.is_set():
         logger.trace("Amaya Tick")
-        await asyncio.sleep(10)
+        await asyncio.sleep(5)
     
     logger.info("关闭 Orchestrator")

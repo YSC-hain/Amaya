@@ -14,7 +14,6 @@
       {
         devShells.default = pkgs.mkShell {
           packages = [
-            pkgs.python312
             pkgs.uv
             pkgs.ruff
             pkgs.pyright
