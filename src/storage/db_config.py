@@ -1,22 +1,30 @@
-import sqlite3
+import aiosqlite
 import os
 
-if not os.path.exists('data/'):
-    os.makedirs('data/', exist_ok=True)
 
-conn = sqlite3.connect('data/amaya.db')
+conn: aiosqlite.Connection | None = None
 
-user_version = conn.execute("PRAGMA user_version").fetchone()[0]
-if user_version == 0:
-    with open('src/storage/sql/db_init_v1.sql', 'r', encoding='utf-8') as f:
-        init_sql = f.read()
-    conn.executescript(init_sql)
-    conn.execute("PRAGMA user_version = 1;")
-elif user_version == 1:
-    with open('src/storage/sql/db_preconfig_v1.sql', 'r', encoding='utf-8') as f:
-        init_sql = f.read()
-    conn.executescript(init_sql)
+async def init_db(db_path: str) -> None:
+    db_dir = os.path.dirname(db_path)
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+    global conn
+    conn = await aiosqlite.connect(db_path)
 
-conn.commit()
+    async with conn.execute("PRAGMA user_version") as cursor:
+        row = await cursor.fetchone()
+        user_version = row[0]
 
-__all__ = ["conn"]
+        if user_version == 0:
+            with open('src/storage/sql/db_init_v1.sql', 'r', encoding='utf-8') as f:
+                init_sql = f.read()
+                await conn.executescript(init_sql)
+            await conn.execute("PRAGMA user_version = 1")
+        elif user_version == 1: # 数据库初始版本
+            with open('src/storage/sql/db_preconfig_v1.sql', 'r', encoding='utf-8') as f:
+                init_sql = f.read()
+                await conn.executescript(init_sql)
+        # 数据库升级逻辑可以在这里添加
+        await conn.commit()
+
+__all__ = ["conn", "init_db"]

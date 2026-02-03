@@ -21,24 +21,59 @@ def requires_auth(func):
             return await func(update, *args, **kwargs)
     return decorated
 
-async def send_typing_action(update: telegram.Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+_typing_tasks: dict[int, asyncio.Task] = {}
+
+async def _send_typing_loop(bot: telegram.Bot, chat_id: int) -> None:
     """发送正在输入的动作"""
-    while True:
-        await context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action='typing')
-        await asyncio.sleep(3.5)
+    try:
+        while True:
+            logger.trace(f"发送 'typing' 动作给 Telegram chat_id: {chat_id}")
+            await bot.send_chat_action(chat_id=chat_id, action='typing')
+            await asyncio.sleep(3.5)
+    except asyncio.CancelledError:
+        logger.trace(f"停止发送 typing 动作给 Telegram chat_id: {chat_id}")
+
+@bus.on(E.IO_MESSAGE_RECEIVED)
+async def start_sending_typing_loop(msg: IncomingMessage) -> None:
+    """开始发送正在输入动作的循环任务"""
+    chat_id = msg.metadata["channel_chat_id"]
+    task = asyncio.create_task(_send_typing_loop(msg.channel_context.bot, chat_id))
+    _typing_tasks[msg.user_id] = task
+
+@bus.on(E.IO_SEND_MESSAGE)
+async def stop_sending_typing_loop(msg: OutgoingMessage) -> None:
+    """停止发送正在输入动作的循环任务"""
+    task = _typing_tasks.get(msg.user_id)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        del _typing_tasks[msg.user_id]
 
 
 @requires_auth
 async def cmd_start(update: telegram.Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info(f"收到 /start 命令来自 Telegram ID: {update.effective_user.id}")
-    storage.user.create_user_if_not_exists(update.effective_user.id)
+    await storage.user.create_user_if_not_exists(update.effective_user.id)
     await update.message.reply_text("Amaya bot online.")
 
 @requires_auth
 async def process_message(update: telegram.Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = storage.user.get_user_by_telegram_id(update.effective_user.id)['user_id']
+    # 预处理
+    user = await storage.user.get_user_by_telegram_id(update.effective_user.id)
+    if user is not None:
+        user_id = user['user_id']
+    else:
+        logger.error(f"Telegram User ID: {update.effective_user.id} 在未注册时发送消息")
+        await update.message.reply_text("您尚未注册，请发送 /start 命令以注册")
+        return
+
     logger.info(f"User ID: {user_id} 消息内容: {update.message.text}")
-    send_typing_task = asyncio.create_task(send_typing_action(update, context))
+
+    # 发送到事件总线
     if update.message and update.message.text:
         incoming_msg = IncomingMessage(
             channel_type = ChannelType.TELEGRAM_BOT_POLLING,
@@ -46,29 +81,39 @@ async def process_message(update: telegram.Update, context: ContextTypes.DEFAULT
             content = update.message.text,
             channel_context = context,
             timestamp = update.message.date,
+            metadata = {"channel_chat_id": update.effective_chat.id},
         )
         bus.emit(E.IO_MESSAGE_RECEIVED, incoming_msg)
-    send_typing_task.cancel()  # ToDo: 该task应该放入incoming_msg中, 由后续处理器取消
+
+
+@bus.on(E.IO_SEND_MESSAGE)
+async def send_outgoing_message(msg: OutgoingMessage) -> None:
+    logger.info(f"发送消息给用户 {msg.user_id}: {msg.content}")
+    user = await storage.user.get_user_by_id(msg.user_id)
+    if user is not None:
+        chat_id = user['telegram_user_id']
+        await msg.channel_context.bot.send_message(chat_id=chat_id, text=msg.content)
+    else:
+        logger.error(f"无法找到 user_id: {msg.user_id} 对应的 Telegram 用户")
+
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理 telegram 库中发生的错误"""
     logger.error(f"Telegram 错误: {context.error}", exc_info=context.error)
     if ADMIN_TELEGRAM_USER_ID != 0:
         try:
-            await context.bot.send_message(chat_id=ADMIN_TELEGRAM_USER_ID, text=f"Warning! Amaya发生错误: {context.error}")
+            await context.bot.send_message(chat_id=ADMIN_TELEGRAM_USER_ID, text=f"Warning! Amaya 在与 {update.effective_user.id} 的对话中发生错误: {context.error}")
         except Exception as e:
             logger.error(f"向管理员发送错误消息失败: {e}", exc_info=e)
 
-
-@bus.on(E.IO_SEND_MESSAGE)
-async def send_outgoing_message(msg: OutgoingMessage) -> None:
-    logger.info(f"发送消息给用户 {msg.user_id}: {msg.content}")
-    chat_id = storage.user.get_user_by_id(msg.user_id)['telegram_user_id']
-    await msg.channel_context.bot.send_message(chat_id=chat_id, text=msg.content)
+def bot_error_callback(error: telegram.error.TelegramError) -> None:
+    if isinstance(error, telegram.error.NetworkError):
+        logger.warning(f"Telegram Bot 网络错误: {error}")
+    else:
+        logger.error(f"Telegram Bot 发生预期外的错误: {error}", exc_info=error)
 
 
 async def main(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
-    # 最简单的 builder 用法（官方示例风格）
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", cmd_start))
@@ -83,9 +128,11 @@ async def main(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
     try:    
         await app.initialize()
         await app.updater.start_polling(
-            poll_interval=0.0,
+            poll_interval=0.5,
             timeout=datetime.timedelta(seconds=30),
-            drop_pending_updates=True,
+            bootstrap_retries=-1,
+            drop_pending_updates=False,  # 保留下线期间的消息
+            error_callback=bot_error_callback,
         )
         await app.start()
         logger.info("Telegram Bot Polling 已启动")

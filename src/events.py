@@ -1,7 +1,7 @@
 """事件总线模块，定义了事件总线类 Bus 及事件名集合 E
 事件分为两种：
-1. 普通事件：允许多个处理器注册；
-2. 独占事件：仅允许一个处理器注册，尝试重复注册会引发运行时错误(未实现)；
+1. 普通事件：允许多个处理器注册;
+2. 独占事件：仅允许一个处理器注册，尝试重复注册会引发运行时错误(未实现);
 """
 
 from __future__ import annotations
@@ -21,9 +21,7 @@ class E:
     # 独占事件
     IO_SEND_MESSAGE = "io.send_message"
 
-EXCLUSIVE_EVENTS = {
-    E.IO_SEND_MESSAGE,
-}
+EXCLUSIVE_EVENTS = {}
 
 
 class Bus(AsyncIOEventEmitter):

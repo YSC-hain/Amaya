@@ -8,7 +8,7 @@ from config.settings import (
 from llm.base import *
 from functions.base import get_all_tools, get_functions_schemas, auto_execute_tool, FunctionCall
 from functions.reminder_func import *
-from openai import OpenAI
+from openai import AsyncOpenAI
 from typing import List, Dict
 import json
 
@@ -18,7 +18,7 @@ class OpenAIClient(LLMClient):
         self.base_url = base_url
         self.model = model
         self.inst = inst
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             api_key = self.api_key,
             base_url = self.base_url
         )
@@ -27,7 +27,7 @@ class OpenAIClient(LLMClient):
         need_while = True
         while need_while:
             logger.trace(f"LLM请求发起 BaseUrl:{self.base_url}; Model:{self.model}; Context:{context}")
-            response = self.client.responses.create(
+            response = await self.client.responses.create(
                 model = self.model,
                 instructions = self.inst,
                 tools = get_functions_schemas(list(get_all_tools().values())),

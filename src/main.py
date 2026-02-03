@@ -7,9 +7,10 @@ setup_logging(
 
 import asyncio
 import signal
+
 from channels.telegram_polling import main as telegram_main
-import core.orchestrator  # noqa: F401 用于注册事件处理程序
-import storage.db_config
+import core.orchestrator
+import storage.db_config as db_config
 
 shutdown_event = asyncio.Event()
 
@@ -23,10 +24,19 @@ async def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    await asyncio.gather(
-        telegram_main(shutdown_event),
-        core.orchestrator.main_loop(shutdown_event),
-    )
+    await db_config.init_db("data/amaya.db")
+
+    try:
+        await asyncio.gather(
+            telegram_main(shutdown_event),
+            core.orchestrator.main_loop(shutdown_event),
+        )
+    finally:
+        logger.info("关闭数据库连接...")
+        if db_config.conn is not None:
+            await db_config.conn.close()
+        logger.info("Amaya 已关闭")
+
 
 if __name__ == "__main__":
     logger.info("启动 Amaya...")
