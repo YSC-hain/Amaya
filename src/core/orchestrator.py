@@ -2,6 +2,7 @@ from config.logger import logger
 from config.settings import *
 from events import bus, E
 from channels.base import ChannelType, IncomingMessage, OutgoingMessage
+import storage.message as message
 from llm.openai_client import OpenAIClient
 from config.prompts import *
 from typing import List, Dict
@@ -17,7 +18,9 @@ class Amaya:
     
     async def process_msg(self, msg: IncomingMessage) -> None:
         # ToDo
-        llm_context: List[Dict[str, str]] = [
+        history = await message.get_recent_messages_by_user_id(msg.user_id, limit=30)
+        history = [{"role": m["role"], "content": m["content"]} for m in reversed(history)]
+        llm_context: List[Dict[str, str]] = history + [
             {
                 "role": "user",
                 "content": msg.content,
@@ -36,6 +39,7 @@ amaya = Amaya()
 @bus.on(E.IO_MESSAGE_RECEIVED)
 async def handle_incoming_message(msg: IncomingMessage) -> None:
     logger.info(f"处理来自用户 {msg.user_id} 的消息: {msg.content}")
+    await message.create_message(msg.user_id, msg.channel_type, "user", msg.content)
 
     res = await amaya.process_msg(msg)
     
@@ -45,6 +49,7 @@ async def handle_incoming_message(msg: IncomingMessage) -> None:
         content = f"{res}",
         channel_context = msg.channel_context,
     ))
+    await message.create_message(msg.user_id, msg.channel_type, "amaya", res)
 
 
 async def main_loop(shutdown_event: asyncio.Event = asyncio.Event()) -> None:

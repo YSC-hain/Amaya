@@ -12,4 +12,5 @@ dependencies = [
     "openai",
     "aiosqlite",
     "watchdog",
+    "python-ulid"
 ]

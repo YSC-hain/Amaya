@@ -12,12 +12,12 @@ CREATE TABLE users (
 );
 
 CREATE TABLE messages (
-    message_id TEXT PRIMARY KEY,  -- ULID
+    message_id TEXT NOT NULL PRIMARY KEY,  -- ULID
 
     channel TEXT NOT NULL,
     user_id INTEGER NOT NULL,
 
-    role TEXT CHECK(role IN ('user', 'amaya', 'world')) NOT NULL,
+    role TEXT CHECK(role IN ('system', 'world', 'user', 'amaya')) NOT NULL,
     content TEXT NOT NULL,
 
     created_at_utc DATETIME DEFAULT CURRENT_TIMESTAMP,

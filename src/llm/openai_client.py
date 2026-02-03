@@ -22,6 +22,16 @@ class OpenAIClient(LLMClient):
             api_key = self.api_key,
             base_url = self.base_url
         )
+    
+    def _convert_context_to_openai(self, context: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        role_dict = {
+            "system": "system",
+            "world": "developer",
+            "user": "user",
+            "amaya": "assistant",
+        }
+        context = [{"role": role_dict.get(item["role"]), "content": item["content"]} for item in context]
+        return context
 
     async def generate_response(self, context: List[Dict[str, str]]) -> str:
         need_while = True
@@ -31,7 +41,7 @@ class OpenAIClient(LLMClient):
                 model = self.model,
                 instructions = self.inst,
                 tools = get_functions_schemas(list(get_all_tools().values())),
-                input = context,
+                input = self._convert_context_to_openai(context),
             )
             logger.trace(f"LLM请求收到响应: {response}")
             context += response.output
@@ -50,4 +60,5 @@ class OpenAIClient(LLMClient):
                         })
                     })
 
+        logger.trace(f"LLM响应生成完成: {response}")
         return response.output_text
