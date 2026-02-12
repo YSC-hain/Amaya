@@ -1,5 +1,10 @@
 from config.logger import logger
+from config.settings import *
+from events import bus, E
 from functions.base import *
+import storage.reminder as reminder_storage
+import datetime
+import pytz
 import asyncio
 from typing import Callable, Dict
 
@@ -17,30 +22,32 @@ class CreateReminder(BaseFunction):
                         "type": "string",
                         "description": "The title of the reminder"
                     },
-                    "datetime": {
+                    "time": {
                         "type": "string",
-                        "description": "The date and time of the reminder in YYYY-MM-DD HH:MM format"
+                        "description": "The date and time of the reminder in 'YYYY-MM-DD HH:MM' format"
                     },
                     "prompt": {
                         "type": "string",
-                        "description": "When a reminder is triggered, the conversation along with this prompt will be fed into the LLM to generate the most appropriate response for that moment."
+                        "description": "When a reminder is triggered, the conversation along with this prompt will be fed into Amaya to generate the most appropriate response for that moment. Ensure conciseness and accuracy."
                     }
                 },
-                "required": ["title", "datetime", "prompt"]
+                "required": ["title", "time", "prompt"]
             }
         }
 
-    async def execute(self, title: str, datetime: str, prompt: str):
-        # ToDo: 添加实际的提醒创建逻辑
-        reminder = {
-            "title": title,
-            "datetime": datetime,
-            "prompt": prompt
-        }
-        logger.info(f"[Mock] 创建提醒: {reminder}")
-        # 模拟异步操作
-        await asyncio.sleep(0.1)
-        return f"提醒已创建: {reminder}"
+    async def execute(self, user_id: int, title: str, time: str, prompt: str):
+        # 转换 datetime 到 UTC, 先使用配置中的时区推算(可能遗留问题)
+        local_tz = pytz.timezone(DEDEFAULT_TIMEZONE)
+        remind_at_local = local_tz.localize( datetime.datetime.strptime(time, '%Y-%m-%d %H:%M') )
+        remind_at_utc = remind_at_local.astimezone(pytz.UTC).strftime('%Y-%m-%d %H:%M')
+
+        reminder = await reminder_storage.create_reminder(
+            user_id=user_id,
+            title=title,
+            remind_at_utc=remind_at_utc,
+            prompt=prompt
+        )
+        return f"Reminder created with ID: {reminder.reminder_id}"
 
 register_tool(CreateReminder())
 

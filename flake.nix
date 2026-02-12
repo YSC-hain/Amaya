@@ -14,6 +14,7 @@
       {
         devShells.default = pkgs.mkShell {
           packages = [
+            pkgs.sqlitestudio
             pkgs.uv
             pkgs.ruff
             pkgs.pyright

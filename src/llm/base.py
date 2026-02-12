@@ -6,7 +6,7 @@ from datetime import datetime
 
 class LLMClient(ABC):
     @abstractmethod
-    async def generate_response(self, context: List[Dict[str, str]]) -> str:
+    async def generate_response(self, user_id: int, context: List[Dict[str, str]]) -> str:
         pass
 
 __all__ = ["LLMClient"]

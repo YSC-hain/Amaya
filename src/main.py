@@ -10,6 +10,7 @@ import signal
 
 from channels.telegram_polling import main as telegram_main
 import core.orchestrator
+import world.reminder
 import storage.db_config as db_config
 
 shutdown_event = asyncio.Event()
@@ -30,6 +31,7 @@ async def main():
         await asyncio.gather(
             telegram_main(shutdown_event),
             core.orchestrator.main_loop(shutdown_event),
+            world.reminder.main_loop(shutdown_event),
         )
     finally:
         logger.info("关闭数据库连接...")

@@ -2,6 +2,7 @@
 事件分为两种：
 1. 普通事件：允许多个处理器注册;
 2. 独占事件：仅允许一个处理器注册，尝试重复注册会引发运行时错误(未实现);
+(暂时不使用以上逻辑，仅作预留)
 """
 
 from __future__ import annotations
@@ -17,9 +18,10 @@ AsyncHandler = Callable[..., Awaitable[None]]
 class E:
     # 普通事件
     IO_MESSAGE_RECEIVED = "io.message_received"
-
-    # 独占事件
     IO_SEND_MESSAGE = "io.send_message"
+    REMINDER_CREATED = "reminder.created"
+    REMINDER_TRIGGERED = "reminder.triggered"
+    REMINDER_SENT = "reminder.sent"
 
 EXCLUSIVE_EVENTS = {}
 

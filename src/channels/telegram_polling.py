@@ -23,16 +23,19 @@ def requires_auth(func):
 
 
 _typing_tasks: dict[int, asyncio.Task] = {}
+_bot_instance: telegram.Bot = None
 
 async def _send_typing_loop(bot: telegram.Bot, chat_id: int) -> None:
     """发送正在输入的动作"""
     try:
-        while True:
-            logger.trace(f"发送 'typing' 动作给 Telegram chat_id: {chat_id}")
+        logger.trace(f"开始发送 'typing' 动作给 Telegram chat_id: {chat_id}")
+        for _ in range(0, 15):
             await bot.send_chat_action(chat_id=chat_id, action='typing')
             await asyncio.sleep(3.5)
-    except asyncio.CancelledError:
         logger.trace(f"停止发送 typing 动作给 Telegram chat_id: {chat_id}")
+    except asyncio.CancelledError:
+        logger.trace(f"中止发送 typing 动作给 Telegram chat_id: {chat_id}")
+        return        
 
 @bus.on(E.IO_MESSAGE_RECEIVED)
 async def start_sending_typing_loop(msg: IncomingMessage) -> None:
@@ -92,7 +95,16 @@ async def send_outgoing_message(msg: OutgoingMessage) -> None:
     user = await storage.user.get_user_by_id(msg.user_id)
     if user is not None:
         chat_id = user['telegram_user_id']
-        await msg.channel_context.bot.send_message(chat_id=chat_id, text=msg.content)
+        bot = _bot_instance or msg.channel_context.bot
+        try:
+            await bot.send_message(chat_id=chat_id, text=msg.content)
+        except Exception as e:
+            logger.error(f"向 Telegram 用户 {chat_id} 发送消息失败: {e}, 即将重试", exc_info=e)
+            try:
+                await asyncio.sleep(5)
+                await bot.send_message(chat_id=chat_id, text=msg.content)
+            except Exception as e:
+                logger.error(f"[重试] 向 Telegram 用户 {chat_id} 发送消息失败: {e}", exc_info=e)
     else:
         logger.error(f"无法找到 user_id: {msg.user_id} 对应的 Telegram 用户")
 
@@ -114,6 +126,7 @@ def bot_error_callback(error: telegram.error.TelegramError) -> None:
 
 
 async def main(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
+    global _bot_instance
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", cmd_start))
@@ -127,9 +140,10 @@ async def main(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
 
     try:    
         await app.initialize()
+        _bot_instance = app.bot
         await app.updater.start_polling(
             poll_interval=0.5,
-            timeout=datetime.timedelta(seconds=30),
+            timeout=datetime.timedelta(seconds=15),
             bootstrap_retries=-1,
             drop_pending_updates=False,  # 保留下线期间的消息
             error_callback=bot_error_callback,
