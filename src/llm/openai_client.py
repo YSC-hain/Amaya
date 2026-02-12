@@ -1,4 +1,4 @@
-from config.logger import logger
+from logger import logger
 from config.settings import (
     OPENAI_PRIMARY_API_KEY,
     OPENAI_PRIMARY_BASE_URL,

@@ -5,7 +5,7 @@
 2. 记忆点：具体的记忆信息，字典结构，键代表“记忆锚点”，值代表“记忆内容”
 """
 
-from config.logger import logger
+from logger import logger
 from functions.base import *
 import storage.work_memory as work_memory_storage
 

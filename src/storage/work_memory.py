@@ -6,7 +6,7 @@
 """
 
 import storage.db_config as db_config
-from config.logger import logger
+from logger import logger
 
 def _ensure_conn():
     if db_config.conn is None:

@@ -1,5 +1,5 @@
 import storage.db_config as db_config
-from config.logger import logger
+from logger import logger
 from ulid import ULID
 
 __all__ = ["create_message", "get_recent_messages_by_user_id"]

@@ -13,5 +13,4 @@ dependencies = [
     "aiosqlite",
     "watchdog",
     "python-ulid",
-    "pytz",
 ]

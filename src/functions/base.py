@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from config.logger import logger
+from datamodel import *
+from logger import logger
 from typing import Any, Dict, List, Optional
 
 class BaseFunction(ABC):
@@ -13,10 +13,6 @@ class BaseFunction(ABC):
     async def execute(self, *args, **kwargs) -> str:
         pass
 
-@dataclass
-class FunctionCall:
-    name: str
-    arguments: Dict[str, Any]  # 要求附加 user_id 参数
 
 def get_functions_schemas(functions: list[BaseFunction]) -> list[dict]:
     return [func.tool_schema for func in functions]

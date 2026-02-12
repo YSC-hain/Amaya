@@ -1,4 +1,4 @@
-from config.logger import setup_logging, logger
+from logger import setup_logging, logger
 setup_logging(
     log_level="TRACE",
     log_file="logs/amaya.log",

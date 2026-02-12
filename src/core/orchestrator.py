@@ -1,17 +1,17 @@
-from config.logger import logger
+from logger import logger
 from config.settings import *
 from events import bus, E
-from datamodel.reminder_base import *
-from channels.base import ChannelType, IncomingMessage, OutgoingMessage
+from datamodel import *
 import storage.message as message_storage
 import storage.reminder as reminder_storage
+import storage.user as user_storage
+from utils import *
 from llm.openai_client import OpenAIClient
 from storage.work_memory import *
 from config.prompts import *
 from typing import List, Dict
 import asyncio
 import time
-import datetime
 
 # 注册工具函数
 from functions.reminder_func import *
@@ -34,6 +34,20 @@ class Amaya:
         llm_context: List[Dict[str, str]] | None = None
         # ToDo
 
+        # 获取用户信息
+        user_info = await user_storage.get_user_by_id(user_id)
+
+        # 世界信息 ToDo
+        world_info = f"{append_world_context or ''}"
+
+        # 未触发的提醒
+        optional_reminder_str = ""
+        pending_reminders = await reminder_storage.get_pending_reminders_by_user_id(user_id)
+        if pending_reminders:
+            optional_reminder_str = "\n\n-----\n[Pending Reminders]\n"        
+            for r in pending_reminders:
+                optional_reminder_str += f"- [{r.reminder_id}] {r.title} (at {utc_min_str_to_user_local_min(r.remind_at_min_utc, user_info.timezone)})\n"
+
         # 记忆系统
         memory = ""
         memory_groups = await list_memory_groups_by_user_id(user_id)
@@ -47,20 +61,24 @@ class Amaya:
         llm_context = [
             {
                 "role": "world",
-                "content": f"[Memory Context]\n{memory}"
+                "content": f"[Memory Context]\n{memory}\n\n-----\n\n[World Info]\n{world_info}{optional_reminder_str}"
             }
         ]
 
         # 最近消息
         history = await message_storage.get_recent_messages_by_user_id(user_id, limit=30)
-        llm_context += [ {"role": m["role"], "content": m["content"]} for m in reversed(history) ]
+        llm_context += [
+            {
+                "role": m["role"],
+                "content": f"[{utc_str_to_user_local_min(m['created_at_utc'], user_info.timezone)}] {m['content']}"
+            } for m in reversed(history)
+        ]
 
-        # 世界信息
-        world_info = f"Current Time: {datetime.datetime.now()}\n{append_world_context or ''}"
-        llm_context.append({
+        llm_context.insert(-1, {
             "role": "world",
-            "content": f"[World Info]\n{world_info}"
+            "content": f"当前时间：{now_user_local_min(user_info.timezone)}"
         })
+
 
         start_time = time.perf_counter()
         res = await self.smart_llm_client.generate_response(
@@ -100,10 +118,12 @@ async def handle_incoming_message(msg: IncomingMessage) -> None:
 @bus.on(E.REMINDER_TRIGGERED)
 async def handle_reminder_triggered(reminder: Reminder):
     logger.info(f"触发 Reminder: id={reminder.reminder_id}, user_id={reminder.user_id}, title={reminder.title}")
+    reminder.status = "sent"
+    reminder.next_action_at_min_utc = None  # ToDo: 未来可能需要更复杂的状态机设计
+    await reminder_storage.update_reminder(reminder)
 
-    # 提醒触发属于“事件通知”，必须避免再次产生副作用（例如又创建一个 reminder）
     reminder_context = (
-        "[SYSTEM] 提醒被触发\n"
+        "[SYSTEM] 有一个提醒被触发\n"
         f"标题：{reminder.title}\n"
         f"要求：{reminder.prompt}\n"
         "说明：请根据上下文与要求，直接生成要发给用户的提醒消息。"
@@ -122,9 +142,6 @@ async def handle_reminder_triggered(reminder: Reminder):
         channel_context = None,
     ))
     #bus.emit(E.REMINDER_SENT, reminder_id=reminder.reminder_id)
-    reminder.status = "sent"
-    reminder.next_action_at_utc = None
-    await reminder_storage.update_reminder(reminder)
 
 async def main_loop(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
     """主异步事件循环"""
@@ -133,4 +150,4 @@ async def main_loop(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
         #logger.trace("Amaya Tick")
         await asyncio.sleep(1)
     
-    logger.info("关闭 Orchestrator")
+    logger.info("Orchestrator 已关闭")

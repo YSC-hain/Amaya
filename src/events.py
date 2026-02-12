@@ -10,7 +10,7 @@ from pyee.asyncio import AsyncIOEventEmitter
 from typing import Awaitable, Callable, Dict, Set
 from functools import wraps
 
-from config.logger import logger
+from logger import logger
 
 AsyncHandler = Callable[..., Awaitable[None]]
 

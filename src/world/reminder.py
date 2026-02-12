@@ -1,12 +1,12 @@
 """
-注意: Reminder 的时间(remind_at_utc)只精确到分钟，其格式为 "YYYY-MM-DD HH:MM"
+注意: Reminder 的时间(remind_at_min_utc)只精确到分钟，其格式为 "YYYY-MM-DD HH:MM"
 """
 
 from events import bus, E
-from config.logger import logger
-from datamodel.reminder_base import *
+from logger import logger
+from datamodel import *
 from typing import Dict, List
-from datetime import datetime
+from utils import *
 import asyncio
 import storage.reminder as reminder_storage
 
@@ -23,9 +23,8 @@ async def main_loop(shutdown_event: asyncio.Event):
         for reminder in reminders_to_process:
             bus.emit(E.REMINDER_TRIGGERED, reminder=reminder)
             reminder.status = "sent"
-            reminder.next_action_at_utc = None
-            await reminder_storage.update_reminder(reminder) # ToDo: 在正式版本中删除这行
+            reminder.next_action_at_min_utc = None
 
         await asyncio.sleep(25)  # 每25秒检查一次，可能需要改进
 
-    logger.info("Reminder 主循环已停止")
+    logger.info("Reminder 主循环已关闭")

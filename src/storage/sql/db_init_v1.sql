@@ -3,9 +3,10 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE users (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_name TEXT,
-    timezone TEXT NOT NULL DEFAULT 'UTC+8',  -- IANA时区
+    timezone TEXT NOT NULL DEFAULT 'Asia/Shanghai',  -- IANA时区
     email TEXT,
     telegram_user_id INTEGER UNIQUE,
+
     last_active_utc DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_at_utc DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at_utc DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -56,11 +57,12 @@ CREATE TABLE reminders (
     user_id INTEGER NOT NULL,
 
     title TEXT NOT NULL,
-    remind_at_utc DATETIME NOT NULL,
+    remind_at_min_utc DATETIME NOT NULL,
     prompt TEXT NOT NULL,
-    status TEXT CHECK(status IN ('pending', 'sent', 'acked', 'snoozed', 'escalated', 'ignored', 'cancelled')) NOT NULL DEFAULT 'pending',
+    status TEXT CHECK(status IN ('pending', 'sent')) NOT NULL DEFAULT 'pending', -- ToDo：暂时不考虑复杂的状态机设计
+    --status TEXT CHECK(status IN ('pending', 'sent', 'acked', 'snoozed', 'escalated', 'ignored', 'cancelled')) NOT NULL DEFAULT 'pending',
 
-    next_action_at_utc DATETIME DEFAULT NULL,
+    next_action_at_min_utc DATETIME DEFAULT NULL,
     created_at_utc DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at_utc DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)

@@ -1,5 +1,6 @@
 import storage.db_config as db_config
-from config.logger import logger
+from datamodel import *
+from logger import logger
 
 def _ensure_conn():
     if db_config.conn is None:
@@ -16,30 +17,34 @@ async def create_user_if_not_exists(telegram_user_id: int) -> None:
         await db_config.conn.execute("INSERT INTO users (telegram_user_id) VALUES (?)", (telegram_user_id,))
         await db_config.conn.commit()
 
-async def get_user_by_telegram_id(telegram_user_id: int) -> dict | None:
+async def get_user_by_telegram_id(telegram_user_id: int) -> UserInfo | None:
     """通过 Telegram 用户 ID 获取用户信息"""
     _ensure_conn()
-    async with db_config.conn.execute("SELECT user_id, telegram_user_id, created_at_utc FROM users WHERE telegram_user_id = ?", (telegram_user_id,)) as cursor:
+    async with db_config.conn.execute("SELECT user_id, user_name, timezone, email, telegram_user_id FROM users WHERE telegram_user_id = ?", (telegram_user_id,)) as cursor:
         row = await cursor.fetchone()
         if row:
-            return {
-                "user_id": row[0],
-                "telegram_user_id": row[1],
-                "created_at_utc": row[2],
-            }
+            return UserInfo(
+                user_id=row[0],
+                user_name=row[1],
+                timezone=row[2],
+                email=row[3],
+                telegram_user_id=row[4],
+            )
         else:
             return None
 
-async def get_user_by_id(user_id: int) -> dict | None:
+async def get_user_by_id(user_id: int) -> UserInfo | None:
     """通过用户 ID 获取用户信息"""
     _ensure_conn()
-    async with db_config.conn.execute("SELECT user_id, telegram_user_id, created_at_utc FROM users WHERE user_id = ?", (user_id,)) as cursor:
+    async with db_config.conn.execute("SELECT user_id, user_name, timezone, email, telegram_user_id FROM users WHERE user_id = ?", (user_id,)) as cursor:
         row = await cursor.fetchone()
         if row:
-            return {
-                "user_id": row[0],
-                "telegram_user_id": row[1],
-                "created_at_utc": row[2],
-            }
+            return UserInfo(
+                user_id=row[0],
+                user_name=row[1],
+                timezone=row[2],
+                email=row[3],
+                telegram_user_id=row[4]
+            )
         else:
             return None

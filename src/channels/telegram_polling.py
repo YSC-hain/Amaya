@@ -1,6 +1,6 @@
-from config.logger import logger
+from logger import logger
 from events import bus, E
-from channels.base import ChannelType, IncomingMessage, OutgoingMessage
+from datamodel import *
 import datetime
 import asyncio
 
@@ -68,7 +68,7 @@ async def process_message(update: telegram.Update, context: ContextTypes.DEFAULT
     # 预处理
     user = await storage.user.get_user_by_telegram_id(update.effective_user.id)
     if user is not None:
-        user_id = user['user_id']
+        user_id = user.user_id
     else:
         logger.error(f"Telegram User ID: {update.effective_user.id} 在未注册时发送消息")
         await update.message.reply_text("您尚未注册，请发送 /start 命令以注册")
@@ -94,7 +94,7 @@ async def send_outgoing_message(msg: OutgoingMessage) -> None:
     logger.info(f"发送消息给用户 {msg.user_id}: {msg.content}")
     user = await storage.user.get_user_by_id(msg.user_id)
     if user is not None:
-        chat_id = user['telegram_user_id']
+        chat_id = user.telegram_user_id
         bot = _bot_instance or msg.channel_context.bot
         try:
             await bot.send_message(chat_id=chat_id, text=msg.content)
@@ -153,7 +153,7 @@ async def main(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
         
         await shutdown_event.wait()
     finally:
-        logger.info("关闭 Telegram Bot Polling...")
         await app.updater.stop()
         await app.stop()
         await app.shutdown()
+        logger.info("Telegram Bot Polling 已关闭")
