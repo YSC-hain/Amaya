@@ -6,14 +6,18 @@ setup_logging(
 )
 
 import asyncio
+import os
 import signal
+import sys
 
 from channels.telegram_polling import main as telegram_main
+from admin.http_server import main_loop as admin_http_main
 import core.orchestrator
 import world.reminder
 import storage.db_config as db_config
 
 shutdown_event = asyncio.Event()
+restart_event = asyncio.Event()
 
 def signal_handler(sig, frame):
     """处理 SIGINT (Ctrl+C) 信号"""
@@ -32,11 +36,19 @@ async def main():
             telegram_main(shutdown_event),
             core.orchestrator.main_loop(shutdown_event),
             world.reminder.main_loop(shutdown_event),
+            admin_http_main(shutdown_event, restart_event),
         )
     finally:
         logger.info("关闭数据库连接...")
         if db_config.conn is not None:
             await db_config.conn.close()
+            db_config.conn = None
+        if restart_event.is_set():
+            logger.warning("检测到重启信号，正在重新拉起进程...")
+            try:
+                os.execv(sys.executable, [sys.executable, *sys.argv])
+            except Exception as e:
+                logger.error(f"重启失败: {e}", exc_info=e)
         logger.info("Amaya 已关闭")
 
 

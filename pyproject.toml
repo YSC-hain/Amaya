@@ -13,4 +13,6 @@ dependencies = [
     "aiosqlite",
     "watchdog",
     "python-ulid",
+    "fastapi",
+    "uvicorn",
 ]

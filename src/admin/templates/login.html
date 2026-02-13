@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amaya 管理登录</title>
+  <style>
+    :root {
+      --bg: #101214;
+      --panel: #1a1d21;
+      --line: #30353c;
+      --ink: #f2f4f6;
+      --muted: #9ca3ad;
+      --btn: #f2f4f6;
+      --btn-ink: #0f1114;
+      --danger: #ff7d7d;
+      --focus: #c2cad4;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+    .card {
+      width: min(420px, 94vw);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 22px;
+    }
+    h1 { margin: 0; font-size: 20px; letter-spacing: .2px; }
+    p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    label {
+      display: block;
+      margin-top: 16px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    input {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      background: #111418;
+      color: var(--ink);
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus {
+      border-color: var(--focus);
+      box-shadow: 0 0 0 2px rgba(194, 202, 212, 0.15);
+    }
+    button {
+      width: 100%;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 700;
+      background: var(--btn);
+      color: var(--btn-ink);
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .error { min-height: 18px; margin-top: 10px; color: var(--danger); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Amaya 管理端</h1>
+    <p>输入管理员 Token</p>
+    <form id="loginForm">
+      <label for="token">ADMIN_AUTH_TOKEN</label>
+      <input id="token" name="token" type="password" autocomplete="current-password" required />
+      <button id="submitBtn" type="submit">进入</button>
+      <div id="error" class="error"></div>
+    </form>
+  </main>
+  <script>
+    const form = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorEl = document.getElementById('error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.textContent = '';
+      submitBtn.disabled = true;
+      const token = form.token.value.trim();
+      if (!token) {
+        errorEl.textContent = 'Token 不能为空';
+        submitBtn.disabled = false;
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/v1/auth/check', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          errorEl.textContent = 'Token 无效';
+          return;
+        }
+        sessionStorage.setItem('amaya_admin_token', token);
+        window.location.href = '/admin';
+      } catch (err) {
+        errorEl.textContent = '网络错误，请稍后重试';
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

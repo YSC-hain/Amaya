@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amaya 管理台</title>
+  <style>
+    :root {
+      --bg: #0f1114;
+      --panel: #171a1f;
+      --panel-2: #1c2026;
+      --line: #2d323a;
+      --line-soft: #262a31;
+      --ink: #f0f2f5;
+      --muted: #9fa6b1;
+      --ok: #7de1af;
+      --warn: #f3c783;
+      --danger: #ff9b9b;
+      --btn: #262b32;
+      --btn-hover: #2f353e;
+      --badge: #242932;
+      --trace: #bcc4cf;
+      --debug: #a5b9d5;
+      --info: #9fd7d7;
+      --warning: #e7cf9c;
+      --error: #edb0b0;
+      --critical: #ff9191;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      scrollbar-width: thin;
+      scrollbar-color: #5a616c #15181d;
+    }
+
+    *::-webkit-scrollbar {
+      width: 11px;
+      height: 11px;
+    }
+    *::-webkit-scrollbar-track {
+      background: #15181d;
+      border-radius: 10px;
+    }
+    *::-webkit-scrollbar-thumb {
+      background: #59606b;
+      border: 2px solid #15181d;
+      border-radius: 999px;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background: #6f7783;
+    }
+
+    .wrap {
+      width: min(1280px, 96vw);
+      margin: 14px auto 22px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .title h1 { margin: 0; font-size: 18px; }
+    .title p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button, select {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--btn);
+      color: var(--ink);
+      font-size: 12px;
+      padding: 8px 11px;
+      font-weight: 600;
+    }
+    button { cursor: pointer; }
+    button:hover { background: var(--btn-hover); }
+    .btn-danger { border-color: #4a3030; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--panel);
+      padding: 10px;
+    }
+    .kpi .label { color: var(--muted); font-size: 12px; }
+    .kpi .num { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #56606e; }
+    .dot.ok { background: var(--ok); }
+    .dot.bad { background: var(--danger); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.8fr 1fr;
+      gap: 8px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--panel);
+      padding: 10px;
+      min-height: 0;
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .right-stack {
+      display: grid;
+      gap: 8px;
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      min-height: 0;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--line-soft);
+      border-radius: 9px;
+      overflow: auto;
+      max-height: 230px;
+      background: var(--panel-2);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 420px;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 6px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      background: #1b1f25;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .log-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .log-stream {
+      border: 1px solid var(--line-soft);
+      border-radius: 9px;
+      background: var(--panel-2);
+      overflow: auto;
+      max-height: 640px;
+      padding: 8px;
+    }
+
+    .log-entry {
+      border: 1px solid #2f353e;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      background: #151920;
+    }
+    .log-head {
+      display: grid;
+      grid-template-columns: auto auto 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 8px;
+      border-bottom: 1px solid #2a313a;
+      background: #1b2028;
+      font-size: 12px;
+    }
+    .log-time { color: var(--muted); font-family: "IBM Plex Mono", "Menlo", monospace; }
+    .log-source {
+      color: #c1c9d3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: "IBM Plex Mono", "Menlo", monospace;
+      font-size: 11px;
+    }
+    .log-level {
+      border: 1px solid #3a424e;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--badge);
+      letter-spacing: .4px;
+    }
+
+    .level-TRACE .log-level { color: var(--trace); }
+    .level-DEBUG .log-level { color: var(--debug); }
+    .level-INFO .log-level { color: var(--info); }
+    .level-WARNING .log-level { color: var(--warning); }
+    .level-ERROR .log-level { color: var(--error); }
+    .level-CRITICAL .log-level { color: var(--critical); }
+
+    .log-body-wrap {
+      position: relative;
+      background: #12161c;
+    }
+    .log-body {
+      margin: 0;
+      padding: 9px;
+      color: #dce2ea;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "IBM Plex Mono", "Menlo", monospace;
+    }
+    .log-body.collapsed {
+      max-height: 180px;
+      overflow: hidden;
+    }
+    .log-fade {
+      display: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 44px;
+      background: rgba(18, 22, 28, 0.94);
+    }
+    .log-entry.long .log-fade {
+      display: block;
+    }
+    .log-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      border-top: 1px solid #2a313a;
+      background: #171c23;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .log-toggle {
+      border: 1px solid #3a424e;
+      border-radius: 999px;
+      padding: 3px 9px;
+      background: #232932;
+      color: var(--ink);
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; }
+      .right-stack { grid-template-rows: auto; }
+      .log-stream { max-height: 460px; }
+    }
+    @media (max-width: 780px) {
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .actions { width: 100%; }
+      .actions button, .actions select { flex: 1; min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="title">
+        <h1>Amaya 管理台</h1>
+        <p>内部使用</p>
+      </div>
+      <div class="actions">
+        <button id="btnRefresh">刷新</button>
+        <button class="btn-danger" id="btnRestart">重启</button>
+        <button id="btnLogout">退出</button>
+      </div>
+    </header>
+
+    <section class="kpi-grid">
+      <article class="kpi"><div class="label">Users</div><div id="kpiUsers" class="num">-</div></article>
+      <article class="kpi"><div class="label">Messages</div><div id="kpiMessages" class="num">-</div></article>
+      <article class="kpi"><div class="label">Reminders</div><div id="kpiReminders" class="num">-</div></article>
+      <article class="kpi">
+        <div class="label">Service</div>
+        <div class="status"><span id="healthDot" class="dot"></span><span id="healthText">checking...</span></div>
+        <div id="uptime" class="status"></div>
+      </article>
+    </section>
+
+    <section class="layout">
+      <article class="card">
+        <h2>日志</h2>
+        <div class="log-controls">
+          <select id="logLevel">
+            <option value="">全部级别</option>
+            <option>TRACE</option><option>DEBUG</option><option>INFO</option>
+            <option>WARNING</option><option>ERROR</option><option>CRITICAL</option>
+          </select>
+          <select id="logLines">
+            <option value="200">200 行</option>
+            <option value="500" selected>500 行</option>
+            <option value="1000">1000 行</option>
+          </select>
+          <button id="btnReloadLogs">刷新日志</button>
+        </div>
+        <div id="logs" class="log-stream">loading...</div>
+      </article>
+
+      <div class="right-stack">
+        <article class="card">
+          <h2>最近消息</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>时间</th><th>用户</th><th>角色</th><th>内容</th></tr></thead>
+              <tbody id="messagesBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>最近提醒</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>用户</th><th>标题</th><th>状态</th></tr></thead>
+              <tbody id="remindersBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>用户</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>时区</th><th>Telegram</th></tr></thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+    const LOG_HEAD_RE = /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)\s+\|\s+([A-Z]+)\s+\|\s+(.+?)\s+-\s+(.*)$/;
+
+    function getToken() {
+      return sessionStorage.getItem('amaya_admin_token') || '';
+    }
+
+    function esc(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function looksLikeJson(text) {
+      const t = text.trim();
+      return (t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'));
+    }
+
+    function tryPrettyJson(text) {
+      if (!looksLikeJson(text)) return text;
+      try {
+        return JSON.stringify(JSON.parse(text), null, 2);
+      } catch {
+        return text;
+      }
+    }
+
+    function normalizeEscapedText(text) {
+      return String(text ?? '')
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\n', '\n')
+        .replaceAll('\t', '  ');
+    }
+
+    function smartPrettyStruct(text) {
+      const src = String(text ?? '');
+      let out = '';
+      let depth = 0;
+      let quote = '';
+      let escaped = false;
+
+      const indent = (n) => '  '.repeat(Math.max(0, n));
+      const closingOf = { '[': ']', '{': '}', '(': ')' };
+
+      for (let i = 0; i < src.length; i++) {
+        const ch = src[i];
+
+        if (quote) {
+          out += ch;
+          if (escaped) {
+            escaped = false;
+            continue;
+          }
+          if (ch === '\\') {
+            escaped = true;
+            continue;
+          }
+          if (ch === quote) {
+            quote = '';
+          }
+          continue;
+        }
+
+        if (ch === '"' || ch === "'") {
+          quote = ch;
+          out += ch;
+          continue;
+        }
+
+        if (ch === '[' || ch === '{' || ch === '(') {
+          // 空容器（如 {} / [] / ()）保持单行，减少噪声。
+          let j = i + 1;
+          while (j < src.length && (src[j] === ' ' || src[j] === '\t' || src[j] === '\n')) j++;
+          if (j < src.length && src[j] === closingOf[ch]) {
+            out += ch + src[j];
+            i = j;
+            continue;
+          }
+
+          depth += 1;
+          out += ch + '\n' + indent(depth);
+          continue;
+        }
+
+        if (ch === ']' || ch === '}' || ch === ')') {
+          depth = Math.max(0, depth - 1);
+          out = out.replace(/[ \t]*$/g, '');
+          out += '\n' + indent(depth) + ch;
+          continue;
+        }
+
+        if (ch === ',' && depth > 0) {
+          out += ',\n' + indent(depth);
+          while (i + 1 < src.length && (src[i + 1] === ' ' || src[i + 1] === '\t')) i++;
+          continue;
+        }
+
+        if (ch === ';' && depth === 0) {
+          out += ';\n';
+          while (i + 1 < src.length && (src[i + 1] === ' ' || src[i + 1] === '\t')) i++;
+          continue;
+        }
+
+        out += ch;
+      }
+
+      return out
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/[ \t]+\n/g, '\n')
+        .trim();
+    }
+
+    function formatLogMessage(message, level) {
+      const raw = String(message ?? '');
+      const prettyJson = tryPrettyJson(raw);
+      if (prettyJson !== raw) return prettyJson;
+
+      const normalized = normalizeEscapedText(raw);
+      const upperLevel = String(level || '').toUpperCase();
+      const traceLike = upperLevel === 'TRACE' || normalized.includes('Response(') || normalized.includes('Context:[');
+
+      if (!traceLike) return normalized;
+
+      // 针对 LLM TRACE 的可读化渲染：
+      // 1) 先保留原始语义；2) 按结构层级切分；3) 保持字符串内容不被破坏。
+      return smartPrettyStruct(normalized);
+    }
+
+    function parseLogEntries(lines) {
+      const entries = [];
+      let current = null;
+
+      for (const raw of (lines || [])) {
+        const line = String(raw || '');
+        const m = line.match(LOG_HEAD_RE);
+
+        if (m) {
+          if (current) entries.push(current);
+          current = {
+            time: m[1],
+            level: m[2],
+            source: m[3],
+            message: m[4],
+          };
+          continue;
+        }
+
+        if (!current) {
+          current = {
+            time: '-',
+            level: 'INFO',
+            source: 'raw',
+            message: line,
+          };
+          continue;
+        }
+
+        current.message += "\n" + line;
+      }
+
+      if (current) entries.push(current);
+      return entries;
+    }
+
+    function createLogEntry(entry) {
+      const host = document.createElement('article');
+      const level = (entry.level || 'INFO').toUpperCase();
+      host.className = `log-entry level-${esc(level)}`;
+
+      const pretty = formatLogMessage(entry.message || '', level);
+      const lineCount = pretty.split('\n').length;
+      const charCount = pretty.length;
+      const isLong = charCount > 1500 || lineCount > 22;
+
+      host.innerHTML = `
+        <div class="log-head">
+          <span class="log-time">${esc(entry.time)}</span>
+          <span class="log-level">${esc(level)}</span>
+          <span class="log-source" title="${esc(entry.source)}">${esc(entry.source)}</span>
+        </div>
+        <div class="log-body-wrap">
+          <pre class="log-body ${isLong ? 'collapsed' : ''}">${esc(pretty)}</pre>
+          <div class="log-fade"></div>
+        </div>
+        <div class="log-foot">
+          <span>${lineCount} lines / ${charCount} chars</span>
+          ${isLong ? '<button class="log-toggle">展开</button>' : '<span></span>'}
+        </div>
+      `;
+
+      if (isLong) {
+        host.classList.add('long');
+        const btn = host.querySelector('.log-toggle');
+        const body = host.querySelector('.log-body');
+        btn.addEventListener('click', () => {
+          const collapsed = body.classList.toggle('collapsed');
+          btn.textContent = collapsed ? '展开' : '收起';
+        });
+      }
+
+      return host;
+    }
+
+    async function api(path, options = {}) {
+      const token = getToken();
+      if (!token) {
+        window.location.href = '/admin/login';
+        return null;
+      }
+
+      const opts = { ...options, headers: { ...(options.headers || {}) } };
+      opts.headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(path, opts);
+      if (res.status === 401) {
+        sessionStorage.removeItem('amaya_admin_token');
+        window.location.href = '/admin/login';
+        return null;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || `请求失败: ${res.status}`);
+      }
+      return res.json();
+    }
+
+    function renderRows(containerId, rows, cols) {
+      const body = byId(containerId);
+      body.innerHTML = '';
+      if (!rows || rows.length === 0) {
+        body.innerHTML = `<tr><td colspan="${cols.length}">暂无数据</td></tr>`;
+        return;
+      }
+      for (const row of rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = cols.map(c => `<td>${esc(row[c])}</td>`).join('');
+        body.appendChild(tr);
+      }
+    }
+
+    function renderLogs(lines) {
+      const root = byId('logs');
+      const entries = parseLogEntries(lines);
+      root.innerHTML = '';
+      if (!entries.length) {
+        root.textContent = '暂无日志';
+        return;
+      }
+
+      for (const entry of entries.reverse()) {
+        root.appendChild(createLogEntry(entry));
+      }
+    }
+
+    async function refreshHealth() {
+      const data = await api('/api/v1/health');
+      if (!data) return;
+      byId('healthDot').className = 'dot ' + (data.status === 'ok' ? 'ok' : 'bad');
+      byId('healthText').textContent = data.status === 'ok' ? 'running' : 'unhealthy';
+      byId('uptime').textContent = `Uptime: ${Math.floor(data.uptime_seconds || 0)}s`;
+    }
+
+    async function refreshOverview() {
+      const data = await api('/api/v1/overview');
+      if (!data) return;
+      byId('kpiUsers').textContent = data.counts.users;
+      byId('kpiMessages').textContent = data.counts.messages;
+      byId('kpiReminders').textContent = data.counts.reminders;
+    }
+
+    async function refreshUsers() {
+      const data = await api('/api/v1/users?limit=20');
+      if (!data) return;
+      renderRows('usersBody', data.items, ['user_id', 'timezone', 'telegram_user_id']);
+    }
+
+    async function refreshMessages() {
+      const data = await api('/api/v1/messages?limit=20');
+      if (!data) return;
+      renderRows('messagesBody', data.items, ['created_at_utc', 'user_id', 'role', 'content']);
+    }
+
+    async function refreshReminders() {
+      const data = await api('/api/v1/reminders?limit=20');
+      if (!data) return;
+      renderRows('remindersBody', data.items, ['reminder_id', 'user_id', 'title', 'status']);
+    }
+
+    async function refreshLogs() {
+      const level = byId('logLevel').value;
+      const lines = byId('logLines').value;
+      let q = `?lines=${encodeURIComponent(lines)}`;
+      if (level) q += `&level=${encodeURIComponent(level)}`;
+      const data = await api('/api/v1/logs' + q);
+      if (!data) return;
+      renderLogs(data.lines || []);
+    }
+
+    async function refreshAll() {
+      try {
+        await Promise.all([
+          refreshHealth(),
+          refreshOverview(),
+          refreshUsers(),
+          refreshMessages(),
+          refreshReminders(),
+          refreshLogs(),
+        ]);
+      } catch (err) {
+        alert(err.message || '刷新失败');
+      }
+    }
+
+    byId('btnRefresh').addEventListener('click', refreshAll);
+    byId('btnReloadLogs').addEventListener('click', refreshLogs);
+    byId('logLevel').addEventListener('change', refreshLogs);
+    byId('logLines').addEventListener('change', refreshLogs);
+
+    byId('btnRestart').addEventListener('click', async () => {
+      if (!confirm('确认重启服务？')) return;
+      try {
+        await api('/api/v1/admin/restart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'web-admin' }),
+        });
+        alert('重启请求已发送');
+      } catch (err) {
+        alert(err.message || '重启失败');
+      }
+    });
+
+    byId('btnLogout').addEventListener('click', () => {
+      sessionStorage.removeItem('amaya_admin_token');
+      window.location.href = '/admin/login';
+    });
+
+    if (!getToken()) {
+      window.location.href = '/admin/login';
+    } else {
+      refreshAll();
+      setInterval(refreshHealth, 15000);
+    }
+  </script>
+</body>
+</html>
