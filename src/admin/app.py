@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from config.settings import ADMIN_LOG_FILE, WEBHOOK_SHARED_SECRET
+from config.settings import ADMIN_LOG_FILE, ENABLE_QQ_NAPCAT, WEBHOOK_SHARED_SECRET
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from logger import logger
@@ -27,6 +27,11 @@ from .ui import dashboard_html, login_page_html
 
 def create_app(control: RuntimeControl) -> FastAPI:
     app = FastAPI(title="Amaya Admin API", version="1.2.0")
+    if ENABLE_QQ_NAPCAT:
+        from channels.qq_onebot_ws import register_fastapi_routes as register_qq_routes
+
+        register_qq_routes(app)
+        logger.info("已挂载 QQ/NapCat OneBot 反向 WS 路由")
 
     def health_payload() -> dict[str, Any]:
         return {
@@ -93,7 +98,7 @@ def create_app(control: RuntimeControl) -> FastAPI:
         offset = max(0, offset)
         items = await fetch_all(
             """
-            SELECT user_id, user_name, timezone, email, telegram_user_id, last_active_utc, created_at_utc, updated_at_utc
+            SELECT user_id, user_name, timezone, email, telegram_user_id, qq_user_id, last_active_utc, created_at_utc, updated_at_utc
             FROM users
             ORDER BY user_id DESC
             LIMIT ? OFFSET ?

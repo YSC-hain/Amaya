@@ -112,6 +112,7 @@ async def handle_incoming_message(msg: IncomingMessage) -> None:
         user_id = msg.user_id,
         content = res,
         channel_context = msg.channel_context,
+        metadata = msg.metadata,
     ))
 
 
@@ -135,8 +136,25 @@ async def handle_reminder_triggered(reminder: Reminder):
         append_inst="\n现在, 你需要输出一条要发送给用户的提醒消息（语气自然友好、简洁、提醒现在应该做什么）",
         allow_tools=False,
     )
+
+    user_info = await user_storage.get_user_by_id(reminder.user_id)
+    if user_info is None:
+        logger.error(f"Reminder 发送失败: 找不到用户 user_id={reminder.user_id}")
+        return
+
+    if ENABLE_QQ_NAPCAT and user_info.qq_user_id is not None:
+        channel_type = ChannelType.QQ_NAPCAT_ONEBOT_V11
+    elif ENABLE_TELEGRAM_BOT_POLLING and user_info.telegram_user_id is not None:
+        channel_type = ChannelType.TELEGRAM_BOT_POLLING
+    else:
+        logger.error(
+            f"Reminder 发送失败: 用户 user_id={reminder.user_id} 没有可用通道"
+            f" (qq_enabled={ENABLE_QQ_NAPCAT}, tg_enabled={ENABLE_TELEGRAM_BOT_POLLING})"
+        )
+        return
+
     bus.emit(E.IO_SEND_MESSAGE, OutgoingMessage(
-        channel_type = ChannelType.TELEGRAM_BOT_POLLING,  # ToDo
+        channel_type = channel_type,
         user_id = reminder.user_id,
         content = res,
         channel_context = None,

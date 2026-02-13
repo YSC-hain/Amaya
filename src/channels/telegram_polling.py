@@ -40,6 +40,13 @@ async def _send_typing_loop(bot: telegram.Bot, chat_id: int) -> None:
 @bus.on(E.IO_MESSAGE_RECEIVED)
 async def start_sending_typing_loop(msg: IncomingMessage) -> None:
     """开始发送正在输入动作的循环任务"""
+    if msg.channel_type != ChannelType.TELEGRAM_BOT_POLLING:
+        return
+    if msg.channel_context is None or not msg.metadata:
+        return
+    if "channel_chat_id" not in msg.metadata:
+        return
+
     chat_id = msg.metadata["channel_chat_id"]
     task = asyncio.create_task(_send_typing_loop(msg.channel_context.bot, chat_id))
     _typing_tasks[msg.user_id] = task
@@ -47,6 +54,9 @@ async def start_sending_typing_loop(msg: IncomingMessage) -> None:
 @bus.on(E.IO_SEND_MESSAGE)
 async def stop_sending_typing_loop(msg: OutgoingMessage) -> None:
     """停止发送正在输入动作的循环任务"""
+    if msg.channel_type != ChannelType.TELEGRAM_BOT_POLLING:
+        return
+
     task = _typing_tasks.get(msg.user_id)
     if task:
         task.cancel()
@@ -91,6 +101,9 @@ async def process_message(update: telegram.Update, context: ContextTypes.DEFAULT
 
 @bus.on(E.IO_SEND_MESSAGE)
 async def send_outgoing_message(msg: OutgoingMessage) -> None:
+    if msg.channel_type != ChannelType.TELEGRAM_BOT_POLLING:
+        return
+
     logger.info(f"发送消息给用户 {msg.user_id}: {msg.content}")
     user = await storage.user.get_user_by_id(msg.user_id)
     if user is not None:

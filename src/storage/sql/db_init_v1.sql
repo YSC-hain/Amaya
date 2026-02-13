@@ -6,6 +6,7 @@ CREATE TABLE users (
     timezone TEXT NOT NULL DEFAULT 'Asia/Shanghai',  -- IANA时区
     email TEXT,
     telegram_user_id INTEGER UNIQUE,
+    qq_user_id INTEGER UNIQUE,
 
     last_active_utc DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_at_utc DATETIME DEFAULT CURRENT_TIMESTAMP,

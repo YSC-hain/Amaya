@@ -367,7 +367,7 @@
           <h2>用户</h2>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>ID</th><th>时区</th><th>Telegram</th></tr></thead>
+              <thead><tr><th>ID</th><th>时区</th><th>Telegram</th><th>QQ</th></tr></thead>
               <tbody id="usersBody"></tbody>
             </table>
           </div>
@@ -653,7 +653,7 @@
     async function refreshUsers() {
       const data = await api('/api/v1/users?limit=20');
       if (!data) return;
-      renderRows('usersBody', data.items, ['user_id', 'timezone', 'telegram_user_id']);
+      renderRows('usersBody', data.items, ['user_id', 'timezone', 'telegram_user_id', 'qq_user_id']);
     }
 
     async function refreshMessages() {

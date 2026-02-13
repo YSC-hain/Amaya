@@ -25,6 +25,7 @@ class Reminder:
 # ----------------- Channel 数据模型 ----------------
 class ChannelType(str, Enum):
     TELEGRAM_BOT_POLLING = "telegram_bot_polling"
+    QQ_NAPCAT_ONEBOT_V11 = "qq_napcat_onebot_v11"
     #TELEGRAM_BOT_WEBHOOK = "telegram_bot_webhook"
 
 @dataclass
@@ -62,4 +63,4 @@ class UserInfo:
     timezone: Optional[str] = None  # IANA时区字符串，例如 "Asia/Shanghai"
     email: Optional[str] = None
     telegram_user_id: Optional[int] = None
-
+    qq_user_id: Optional[int] = None

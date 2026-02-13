@@ -10,7 +10,9 @@ import os
 import signal
 import sys
 
+from config.settings import ENABLE_QQ_NAPCAT, ENABLE_TELEGRAM_BOT_POLLING
 from channels.telegram_polling import main as telegram_main
+from channels.qq_onebot_ws import main as qq_main
 from admin.http_server import main_loop as admin_http_main
 import core.orchestrator
 import world.reminder
@@ -32,12 +34,21 @@ async def main():
     await db_config.init_db("data/amaya.db")
 
     try:
-        await asyncio.gather(
-            telegram_main(shutdown_event),
+        tasks = [
             core.orchestrator.main_loop(shutdown_event),
             world.reminder.main_loop(shutdown_event),
             admin_http_main(shutdown_event, restart_event),
-        )
+        ]
+        if ENABLE_TELEGRAM_BOT_POLLING:
+            tasks.append(telegram_main(shutdown_event))
+        else:
+            logger.warning("Telegram Bot Polling 已禁用")
+        if ENABLE_QQ_NAPCAT:
+            tasks.append(qq_main(shutdown_event))
+        else:
+            logger.warning("QQ/NapCat 通道已禁用")
+
+        await asyncio.gather(*tasks)
     finally:
         logger.info("关闭数据库连接...")
         if db_config.conn is not None:
