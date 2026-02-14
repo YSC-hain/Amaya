@@ -24,6 +24,13 @@ def requires_auth(func):
 _typing_tasks: dict[int, asyncio.Task] = {}
 _bot_instance: telegram.Bot = None
 
+
+def get_status() -> dict[str, object]:
+    return {
+        "connected": _bot_instance is not None,
+        "active_typing": len(_typing_tasks),
+    }
+
 async def _send_typing_loop(bot: telegram.Bot, chat_id: int) -> None:
     """发送正在输入的动作"""
     try:
@@ -117,11 +124,10 @@ async def send_outgoing_message(msg: OutgoingMessage) -> None:
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """处理 telegram 库中发生的错误"""
     logger.error(f"Telegram 错误: {context.error}", exc_info=context.error)
-    if ADMIN_TELEGRAM_USER_ID != 0:
-        try:
-            await context.bot.send_message(chat_id=ADMIN_TELEGRAM_USER_ID, text=f"Warning! Amaya 在与 {update.effective_user.id} 的对话中发生错误: {context.error}")
-        except Exception as e:
-            logger.error(f"向管理员发送错误消息失败: {e}", exc_info=e)
+    try:
+        await context.bot.send_message(chat_id=PRIMARY_TELEGRAM_USER_ID, text=f"Warning! Amaya 在对话中发生错误: {context.error}")
+    except Exception as e:
+        logger.error(f"向管理员发送错误消息失败: {e}", exc_info=e)
 
 def bot_error_callback(error: telegram.error.TelegramError) -> None:
     if isinstance(error, telegram.error.NetworkError):
@@ -161,4 +167,5 @@ async def main(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
         await app.updater.stop()
         await app.stop()
         await app.shutdown()
+        _bot_instance = None
         logger.info("Telegram Bot Polling 已关闭")

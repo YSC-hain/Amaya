@@ -10,6 +10,7 @@ import storage.db_config as db_config
 from fastapi import HTTPException
 
 _LOG_LEVEL_RE = re.compile(r"\|\s*([A-Z]+)\s*\|")
+_ALLOWED_LOG_LEVELS = {"TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
 
 def ensure_conn() -> None:
@@ -49,18 +50,38 @@ def tail_lines(path: Path, lines: int) -> list[str]:
     return list(buf)
 
 
-def filter_log_by_level(lines: list[str], level: str | None) -> list[str]:
-    if not level:
-        return lines
-    target = level.upper().strip()
-    if not target:
+def normalize_log_levels(levels: list[str] | None) -> set[str]:
+    if not levels:
+        return set()
+    normalized: set[str] = set()
+    for level in levels:
+        lv = str(level).upper().strip()
+        if lv in _ALLOWED_LOG_LEVELS:
+            normalized.add(lv)
+    return normalized
+
+
+def filter_logs(
+    lines: list[str],
+    levels: list[str] | None = None,
+    keyword: str | None = None,
+) -> list[str]:
+    target_levels = normalize_log_levels(levels)
+    target_keyword = (keyword or "").strip().lower()
+
+    if not target_levels and not target_keyword:
         return lines
 
     filtered: list[str] = []
     for line in lines:
-        match = _LOG_LEVEL_RE.search(line)
-        if match and match.group(1) == target:
-            filtered.append(line)
+        if target_levels:
+            match = _LOG_LEVEL_RE.search(line)
+            if not match or match.group(1) not in target_levels:
+                continue
+        if target_keyword and target_keyword not in line.lower():
+            continue
+        filtered.append(line)
+
     return filtered
 
 

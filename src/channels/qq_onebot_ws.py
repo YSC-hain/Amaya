@@ -30,7 +30,7 @@ from events import E, bus
 from logger import logger
 
 
-class _NapCatSession:
+class _NapCatQQSession:
     def __init__(self, websocket: WebSocket):
         self.websocket = websocket
         self.send_lock = asyncio.Lock()
@@ -41,9 +41,16 @@ class _NapCatSession:
 
 
 _routes_registered = False
-_active_session: _NapCatSession | None = None
+_active_session: _NapCatQQSession | None = None
 _session_lock = asyncio.Lock()
 _pending_echo: dict[str, asyncio.Future] = {}
+
+
+def get_status() -> dict[str, object]:
+    return {
+        "connected": _active_session is not None,
+        "pending_calls": len(_pending_echo),
+    }
 
 
 def _extract_token(websocket: WebSocket) -> str:
@@ -114,9 +121,9 @@ def _fail_all_pending(exc: Exception) -> None:
     _pending_echo.clear()
 
 
-async def _replace_active_session(session: _NapCatSession) -> None:
+async def _replace_active_session(session: _NapCatQQSession) -> None:
     global _active_session
-    old: _NapCatSession | None = None
+    old: _NapCatQQSession | None = None
     async with _session_lock:
         old = _active_session
         _active_session = session
@@ -128,7 +135,7 @@ async def _replace_active_session(session: _NapCatSession) -> None:
             pass
 
 
-async def _detach_active_session(session: _NapCatSession) -> bool:
+async def _detach_active_session(session: _NapCatQQSession) -> bool:
     global _active_session
     async with _session_lock:
         if _active_session is session:
@@ -138,7 +145,7 @@ async def _detach_active_session(session: _NapCatSession) -> bool:
 
 async def _close_active_session(reason: str) -> None:
     global _active_session
-    session: _NapCatSession | None = None
+    session: _NapCatQQSession | None = None
     async with _session_lock:
         session = _active_session
         _active_session = None
@@ -153,7 +160,7 @@ async def _close_active_session(reason: str) -> None:
 async def _send_action(action: str, params: dict[str, Any]) -> dict[str, Any]:
     session = _active_session
     if session is None:
-        raise RuntimeError("NapCat Reverse WS 未连接")
+        raise RuntimeError("NapCatQQ Reverse WS 未连接")
 
     echo = uuid.uuid4().hex
     loop = asyncio.get_running_loop()
@@ -181,7 +188,7 @@ async def _safe_reject_private_user(qq_user_id: int) -> None:
             },
         )
     except Exception as e:
-        logger.warning(f"发送 QQ 鉴权拒绝消息失败: user={qq_user_id}, error={e}")
+        logger.warning(f"发送 NapCatQQ 鉴权拒绝消息失败: user={qq_user_id}, error={e}")
 
 
 async def _handle_message_event(payload: dict[str, Any]) -> None:
@@ -226,7 +233,7 @@ async def _handle_message_event(payload: dict[str, Any]) -> None:
         metadata["qq_group_id"] = qq_group_id
 
     bus.emit(E.IO_MESSAGE_RECEIVED, IncomingMessage(
-        channel_type=ChannelType.QQ_NAPCAT_ONEBOT_V11,
+        channel_type=ChannelType.NAPCATQQ_ONEBOT_V11,
         content=content,
         channel_context=None,
         metadata=metadata,
@@ -248,7 +255,7 @@ async def _handle_payload(payload: Any) -> None:
     elif post_type == "meta_event":
         meta_event_type = payload.get("meta_event_type")
         if meta_event_type == "lifecycle":
-            logger.info(f"NapCat 生命周期事件: {payload.get('sub_type', 'unknown')}, self_id={payload.get('self_id')}")
+            logger.info(f"NapCatQQ 生命周期事件: {payload.get('sub_type', 'unknown')}, self_id={payload.get('self_id')}")
 
 
 def register_fastapi_routes(app: FastAPI) -> None:
@@ -257,16 +264,16 @@ def register_fastapi_routes(app: FastAPI) -> None:
         return
 
     @app.websocket(QQ_NAPCAT_WS_PATH)
-    async def napcat_reverse_ws(websocket: WebSocket):
+    async def napcatqq_reverse_ws(websocket: WebSocket):
         if not _is_authorized(websocket):
             await websocket.close(code=1008, reason="unauthorized")
-            logger.warning("NapCat Reverse WS 鉴权失败")
+            logger.warning("NapCatQQ Reverse WS 鉴权失败")
             return
 
         await websocket.accept()
-        session = _NapCatSession(websocket)
+        session = _NapCatQQSession(websocket)
         await _replace_active_session(session)
-        logger.info(f"NapCat Reverse WS 已连接: path={QQ_NAPCAT_WS_PATH}")
+        logger.info(f"NapCatQQ Reverse WS 已连接: path={QQ_NAPCAT_WS_PATH}")
 
         try:
             while True:
@@ -274,24 +281,24 @@ def register_fastapi_routes(app: FastAPI) -> None:
                 try:
                     payload = json.loads(raw)
                 except json.JSONDecodeError:
-                    logger.warning("收到无法解析的 NapCat 消息, 已忽略")
+                    logger.warning("收到无法解析的 NapCatQQ 消息, 已忽略")
                     continue
                 await _handle_payload(payload)
         except WebSocketDisconnect:
-            logger.warning("NapCat Reverse WS 已断开")
+            logger.warning("NapCatQQ Reverse WS 已断开")
         except Exception as e:
-            logger.error(f"NapCat Reverse WS 处理异常: {e}", exc_info=e)
+            logger.error(f"NapCatQQ Reverse WS 处理异常: {e}", exc_info=e)
         finally:
             was_active = await _detach_active_session(session)
             if was_active:
-                _fail_all_pending(RuntimeError("NapCat Reverse WS 连接已断开"))
+                _fail_all_pending(RuntimeError("NapCatQQ Reverse WS 连接已断开"))
 
     _routes_registered = True
 
 
 @bus.on(E.IO_SEND_MESSAGE)
 async def send_outgoing_message(msg: OutgoingMessage) -> None:
-    if msg.channel_type != ChannelType.QQ_NAPCAT_ONEBOT_V11:
+    if msg.channel_type != ChannelType.NAPCATQQ_ONEBOT_V11:
         return
 
     qq_user_id = msg.metadata.get("qq_user_id") if msg.metadata else None
@@ -318,8 +325,8 @@ async def send_outgoing_message(msg: OutgoingMessage) -> None:
 
 
 async def main(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
-    logger.info(f"QQ/NapCat OneBot 通道已启动，等待反向 WS 连接: {QQ_NAPCAT_WS_PATH}")
+    logger.info(f"NapCatQQ OneBot 通道已启动，等待反向 WS 连接: {QQ_NAPCAT_WS_PATH}")
     await shutdown_event.wait()
     await _close_active_session("service_shutdown")
     _fail_all_pending(RuntimeError("服务已关闭"))
-    logger.info("QQ/NapCat OneBot 通道已关闭")
+    logger.info("NapCatQQ OneBot 通道已关闭")

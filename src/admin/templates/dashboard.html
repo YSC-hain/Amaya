@@ -4,21 +4,50 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Amaya 控制台</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/split.js@1.6.5/dist/split.min.js"></script>
   <style>
+    [x-cloak] { display: none !important; }
+
     :root {
       --bg: #0f1114;
       --panel: #171a1f;
       --panel-2: #1c2026;
+      --panel-3: #151920;
+      --panel-4: #12161c;
+      --panel-5: #11161d;
+      --panel-accent: #232932;
       --line: #2d323a;
       --line-soft: #262a31;
+      --line-entry: #2f353e;
+      --line-subtle: #29303a;
+      --line-point: #2b323c;
+      --line-strong: #3a424e;
+      --active-line: #4d5764;
+      --danger-line: #4a3030;
       --ink: #f0f2f5;
       --muted: #9fa6b1;
+      --ink-soft: #dce2ea;
+      --ink-mono: #c1c9d3;
+      --ink-anchor: #cfd8e3;
       --ok: #7de1af;
       --warn: #f3c783;
       --danger: #ff9b9b;
       --btn: #262b32;
       --btn-hover: #2f353e;
       --badge: #242932;
+      --table-head: #1b1f25;
+      --log-head-bg: #1b2028;
+      --log-foot-bg: #171c23;
+      --mark-bg: #6f5f2b;
+      --mark-fg: #ffe9a6;
+      --scrollbar-track: #15181d;
+      --scrollbar-thumb: #59606b;
+      --scrollbar-thumb-hover: #6f7783;
+      --gutter-handle: #66707f;
+      --gutter-handle-hover: #8a95a5;
+      --dot-idle: #56606e;
+      --fade-bg: rgba(18, 22, 28, 0.94);
       --trace: #bcc4cf;
       --debug: #a5b9d5;
       --info: #9fd7d7;
@@ -28,204 +57,317 @@
     }
 
     * { box-sizing: border-box; }
+    html {
+      font-size: clamp(14px, calc(0.16vw + 11px), 16px);
+    }
     html, body {
       margin: 0;
       background: var(--bg);
       color: var(--ink);
       font-family: "IBM Plex Sans", "PingFang SC", "Noto Sans CJK SC", sans-serif;
       scrollbar-width: thin;
-      scrollbar-color: #5a616c #15181d;
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
     }
+    body { min-height: 100dvh; }
+    *::-webkit-scrollbar { width: 11px; height: 11px; }
+    *::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 10px; }
+    *::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border: 2px solid var(--scrollbar-track); border-radius: 999px; }
+    *::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
-    *::-webkit-scrollbar {
-      width: 11px;
-      height: 11px;
-    }
-    *::-webkit-scrollbar-track {
-      background: #15181d;
-      border-radius: 10px;
-    }
-    *::-webkit-scrollbar-thumb {
-      background: #59606b;
-      border: 2px solid #15181d;
-      border-radius: 999px;
-    }
-    *::-webkit-scrollbar-thumb:hover {
-      background: #6f7783;
-    }
-
-    .wrap {
-      width: min(1280px, 96vw);
-      margin: 14px auto 22px;
-    }
+    .wrap { width: min(104rem, 96vw); margin: 1rem auto 1.5rem; }
 
     .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 0.571rem;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 0.857rem;
       background: var(--panel);
-      padding: 10px 12px;
-      margin-bottom: 10px;
+      padding: 0.714rem 0.857rem;
+      margin-bottom: 0.714rem;
     }
-    .title h1 { margin: 0; font-size: 18px; }
-    .title p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
-
+    .title h1 { margin: 0; font-size: 1.286rem; line-height: 1.35; }
     .actions {
       display: flex;
-      gap: 8px;
+      gap: 0.571rem;
       flex-wrap: wrap;
       align-items: center;
     }
 
-    button, select {
+    button, select, input {
       border: 1px solid var(--line);
-      border-radius: 9px;
+      border-radius: 0.643rem;
       background: var(--btn);
       color: var(--ink);
-      font-size: 12px;
-      padding: 8px 11px;
+      font-size: 0.857rem;
+      padding: 0.571rem 0.786rem;
+      min-height: 2.5rem;
       font-weight: 600;
+      transition: background-color .15s ease, border-color .15s ease, color .15s ease;
     }
+    input { font-weight: 500; min-width: 0; }
     button { cursor: pointer; }
     button:hover { background: var(--btn-hover); }
-    .btn-danger { border-color: #4a3030; }
+    button[disabled] { opacity: .45; cursor: not-allowed; }
+    .btn-danger { border-color: var(--danger-line); }
 
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 0.571rem;
+      margin-bottom: 0.571rem;
     }
     .kpi {
       border: 1px solid var(--line);
-      border-radius: 11px;
+      border-radius: 0.786rem;
       background: var(--panel);
-      padding: 10px;
+      padding: 0.714rem;
     }
-    .kpi .label { color: var(--muted); font-size: 12px; }
-    .kpi .num { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .kpi .label { color: var(--muted); font-size: 0.857rem; }
+    .kpi .num { font-size: 2rem; font-weight: 700; margin-top: 0.286rem; line-height: 1.15; }
     .status {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
+      gap: 0.429rem;
+      font-size: 0.857rem;
       color: var(--muted);
-      margin-top: 8px;
+      margin-top: 0.571rem;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #56606e; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot-idle); }
     .dot.ok { background: var(--ok); }
     .dot.bad { background: var(--danger); }
 
     .layout {
-      display: grid;
-      grid-template-columns: 1.8fr 1fr;
-      gap: 8px;
+      display: flex;
+      align-items: stretch;
+      height: clamp(44rem, 82dvh, 68rem);
+      min-height: 42rem;
     }
-
+    .pane {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #pane-left { width: 57%; }
+    #pane-right { width: 43%; }
+    .gutter {
+      background: var(--line-soft);
+      width: 10px;
+      cursor: col-resize;
+      position: relative;
+      border-radius: 0.571rem;
+      margin: 0 5px;
+      flex-shrink: 0;
+    }
+    .gutter::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 28px;
+      background: var(--gutter-handle);
+      border-radius: 999px;
+    }
+    .gutter:hover::after { background: var(--gutter-handle-hover); }
     .card {
       border: 1px solid var(--line);
-      border-radius: 11px;
+      border-radius: 0.786rem;
       background: var(--panel);
-      padding: 10px;
+      padding: 0.714rem;
       min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
-
     .card h2 {
-      margin: 0 0 8px;
-      font-size: 13px;
+      margin: 0 0 0.571rem;
+      font-size: 0.929rem;
       font-weight: 700;
       color: var(--ink);
     }
 
-    .right-stack {
+    .tool-row {
       display: grid;
-      gap: 8px;
-      grid-template-rows: repeat(3, minmax(0, 1fr));
-      min-height: 0;
+      grid-template-columns: 1fr auto auto;
+      gap: 0.571rem;
+      margin-bottom: 0.571rem;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 0.429rem;
+      margin-bottom: 0.571rem;
+    }
+    .tab-btn {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: var(--btn);
+    }
+    .tab-btn.active {
+      background: var(--btn-hover);
+      border-color: var(--active-line);
+      color: var(--ink);
     }
 
     .table-wrap {
       border: 1px solid var(--line-soft);
-      border-radius: 9px;
+      border-radius: 0.643rem;
       overflow: auto;
-      max-height: 230px;
+      max-height: 360px;
       background: var(--panel-2);
     }
     table {
       width: 100%;
       border-collapse: collapse;
       min-width: 420px;
-      font-size: 12px;
+      font-size: 0.857rem;
     }
     th, td {
       border-bottom: 1px solid var(--line-soft);
-      padding: 6px 7px;
+      padding: 0.429rem 0.5rem;
       text-align: left;
       vertical-align: top;
     }
+    .content-cell {
+      max-width: 340px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     th {
       color: var(--muted);
-      background: #1b1f25;
+      background: var(--table-head);
       position: sticky;
       top: 0;
       z-index: 1;
     }
 
-    .log-controls {
+    .pagination {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.571rem;
+      margin-top: 0.571rem;
+      color: var(--muted);
+      font-size: 0.857rem;
+    }
+    .pagination .btns {
+      display: flex;
+      gap: 0.571rem;
     }
 
+    .log-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 0.571rem;
+      margin-bottom: 0.571rem;
+    }
+    .log-levels {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.429rem;
+      margin-bottom: 0.571rem;
+      color: var(--muted);
+      font-size: 0.786rem;
+    }
+    .log-level-title {
+      margin-right: 2px;
+      color: var(--muted);
+    }
+    .log-level-pill {
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 0.286rem 0.643rem;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.786rem;
+      cursor: pointer;
+      user-select: none;
+      min-height: 2rem;
+      transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .log-level-pill.active {
+      background: var(--panel-2);
+      color: var(--ink);
+      border-color: var(--active-line);
+    }
     .log-stream {
       border: 1px solid var(--line-soft);
-      border-radius: 9px;
+      border-radius: 0.643rem;
       background: var(--panel-2);
       overflow: auto;
-      max-height: 640px;
-      padding: 8px;
+      flex: 1;
+      min-height: 0;
+      padding: 0.571rem;
+    }
+
+    .tab-content {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      padding-right: 2px;
+    }
+
+    .tab-section {
+      width: 100%;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .tab-section .table-wrap {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+    }
+
+    .tab-section .memory-groups {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
     }
 
     .log-entry {
-      border: 1px solid #2f353e;
-      border-radius: 10px;
-      margin-bottom: 8px;
+      border: 1px solid var(--line-entry);
+      border-radius: 0.714rem;
+      margin-bottom: 0.571rem;
       overflow: hidden;
-      background: #151920;
+      background: var(--panel-3);
     }
     .log-head {
       display: grid;
       grid-template-columns: auto auto 1fr;
-      gap: 8px;
+      gap: 0.571rem;
       align-items: center;
-      padding: 6px 8px;
-      border-bottom: 1px solid #2a313a;
-      background: #1b2028;
-      font-size: 12px;
+      padding: 0.429rem 0.571rem;
+      border-bottom: 1px solid var(--line-soft);
+      background: var(--log-head-bg);
+      font-size: 0.857rem;
     }
     .log-time { color: var(--muted); font-family: "IBM Plex Mono", "Menlo", monospace; }
     .log-source {
-      color: #c1c9d3;
+      color: var(--ink-mono);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       font-family: "IBM Plex Mono", "Menlo", monospace;
-      font-size: 11px;
+      font-size: 0.786rem;
     }
     .log-level {
-      border: 1px solid #3a424e;
+      border: 1px solid var(--line-strong);
       border-radius: 999px;
-      padding: 2px 8px;
-      font-size: 10px;
+      padding: 0.143rem 0.571rem;
+      font-size: 0.714rem;
       font-weight: 700;
       background: var(--badge);
       letter-spacing: .4px;
     }
-
     .level-TRACE .log-level { color: var(--trace); }
     .level-DEBUG .log-level { color: var(--debug); }
     .level-INFO .log-level { color: var(--info); }
@@ -233,24 +375,24 @@
     .level-ERROR .log-level { color: var(--error); }
     .level-CRITICAL .log-level { color: var(--critical); }
 
-    .log-body-wrap {
-      position: relative;
-      background: #12161c;
-    }
+    .log-body-wrap { position: relative; background: var(--panel-4); }
     .log-body {
       margin: 0;
-      padding: 9px;
-      color: #dce2ea;
-      font-size: 12px;
+      padding: 0.643rem;
+      color: var(--ink-soft);
+      font-size: 0.857rem;
       line-height: 1.45;
       white-space: pre-wrap;
       word-break: break-word;
       font-family: "IBM Plex Mono", "Menlo", monospace;
     }
-    .log-body.collapsed {
-      max-height: 180px;
-      overflow: hidden;
+    .log-body mark {
+      background: var(--mark-bg);
+      color: var(--mark-fg);
+      padding: 0 2px;
+      border-radius: 2px;
     }
+    .log-body.collapsed { max-height: 180px; overflow: hidden; }
     .log-fade {
       display: none;
       position: absolute;
@@ -258,129 +400,494 @@
       right: 0;
       bottom: 0;
       height: 44px;
-      background: rgba(18, 22, 28, 0.94);
+      background: var(--fade-bg);
     }
-    .log-entry.long .log-fade {
-      display: block;
-    }
+    .log-entry.long .log-fade { display: block; }
     .log-foot {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 6px 8px;
-      border-top: 1px solid #2a313a;
-      background: #171c23;
+      padding: 0.429rem 0.571rem;
+      border-top: 1px solid var(--line-soft);
+      background: var(--log-foot-bg);
       color: var(--muted);
-      font-size: 11px;
+      font-size: 0.786rem;
     }
     .log-toggle {
-      border: 1px solid #3a424e;
+      border: 1px solid var(--line-strong);
       border-radius: 999px;
-      padding: 3px 9px;
-      background: #232932;
+      padding: 0.214rem 0.643rem;
+      background: var(--panel-accent);
       color: var(--ink);
-      font-size: 11px;
+      font-size: 0.786rem;
       cursor: pointer;
     }
 
-    @media (max-width: 1100px) {
-      .layout { grid-template-columns: 1fr; }
-      .right-stack { grid-template-rows: auto; }
+    .memory-groups {
+      border: 1px solid var(--line-soft);
+      border-radius: 0.643rem;
+      background: var(--panel-2);
+      max-height: 420px;
+      overflow: auto;
+      padding: 0.429rem;
+    }
+    .memory-group {
+      border: 1px solid var(--line-entry);
+      border-radius: 0.571rem;
+      padding: 0.571rem;
+      margin-bottom: 0.5rem;
+      background: var(--log-foot-bg);
+    }
+    .memory-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.571rem;
+      margin-bottom: 0.429rem;
+    }
+    .memory-title {
+      font-size: 0.929rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.25;
+    }
+    .memory-meta {
+      color: var(--muted);
+      font-size: 0.786rem;
+      margin-bottom: 0.5rem;
+    }
+    .memory-points {
+      border-top: 1px solid var(--line-subtle);
+      padding-top: 0.571rem;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .memory-point {
+      border: 1px solid var(--line-point);
+      border-radius: 0.571rem;
+      background: var(--panel-5);
+      padding: 0.571rem;
+      font-size: 0.857rem;
+    }
+    .point-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.571rem;
+      margin-bottom: 0.429rem;
+    }
+    .anchor {
+      font-family: "IBM Plex Mono", "Menlo", monospace;
+      color: var(--ink-anchor);
+      font-size: 0.857rem;
+    }
+    .badge {
+      font-size: 0.714rem;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 0.143rem 0.5rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+      background: var(--badge);
+    }
+    .badge.fact { color: var(--info); }
+    .badge.emotion { color: var(--warning); }
+    .badge.work { color: var(--debug); }
+    .point-content {
+      color: var(--ink-soft);
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 0.429rem;
+    }
+    .point-meta {
+      color: var(--muted);
+      font-size: 0.786rem;
+    }
+    .muted { color: var(--muted); font-size: 0.857rem; }
+    .detail-panel {
+      border: 1px solid var(--line-soft);
+      border-radius: 0.643rem;
+      background: var(--panel-2);
+      margin-top: 0.571rem;
+      padding: 0.571rem;
+      font-size: 0.857rem;
+    }
+    .detail-panel pre {
+      margin: 6px 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "IBM Plex Mono", "Menlo", monospace;
+    }
+    .component-status {
+      border: 1px solid var(--line);
+      border-radius: 0.786rem;
+      background: var(--panel);
+      padding: 0.714rem;
+      margin-bottom: 0.571rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.714rem;
+      align-items: center;
+      font-size: 0.857rem;
+      color: var(--muted);
+    }
+    .status-chip {
+      display: inline-flex;
+      gap: 0.429rem;
+      align-items: center;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 0.286rem 0.714rem;
+      background: var(--panel-2);
+    }
+    .dot.off { background: var(--gutter-handle); }
+
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      padding: 0.571rem;
+      gap: 0.571rem;
+      border-top: 1px solid var(--line);
+      background: rgba(23, 26, 31, 0.94);
+      backdrop-filter: blur(12px);
+    }
+    .bottom-nav-btn {
+      flex: 1;
+      min-height: 2.75rem;
+      border-radius: 0.714rem;
+      border-color: var(--line-soft);
+    }
+    .bottom-nav-btn.active {
+      background: var(--btn-hover);
+      border-color: var(--active-line);
+    }
+
+    @media (min-width: 100rem) {
+      .wrap { width: min(112rem, 95vw); }
+      .topbar, .kpi, .component-status, .card { padding: 0.857rem; }
+      .kpi .num { font-size: 2.15rem; }
+      .layout { height: clamp(46rem, 83dvh, 70rem); }
+    }
+
+    @media (min-width: 128rem) {
+      .wrap { width: min(122rem, 94vw); }
+      .kpi-grid { gap: 0.714rem; }
+      .topbar { padding: 0.857rem 1rem; }
+      .log-controls { grid-template-columns: 1.2fr 0.8fr 1.2fr auto; }
+      .tool-row { grid-template-columns: 1.2fr auto auto; }
+    }
+
+    @media (max-width: 75rem) {
+      .layout { display: block; min-height: auto; height: auto; }
+      .gutter { display: none; }
+      #pane-left, #pane-right { width: 100%; }
+      #pane-right { margin-top: 0.571rem; }
       .log-stream { max-height: 460px; }
     }
-    @media (max-width: 780px) {
+    @media (max-width: 48rem) {
       .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tool-row, .log-controls { grid-template-columns: 1fr; }
+      .pagination { flex-direction: column; align-items: flex-start; }
     }
-    @media (max-width: 560px) {
+    @media (max-width: 40rem) {
+      body { padding-bottom: 4.5rem; }
+      .wrap { width: min(92rem, calc(100vw - 1rem)); margin: 0.571rem auto 1rem; }
       .kpi-grid { grid-template-columns: 1fr; }
       .actions { width: 100%; }
       .actions button, .actions select { flex: 1; min-width: 0; }
+      .bottom-nav { display: flex; }
+      .tab-content { padding-right: 0; }
+      .log-level-pill { padding: 0.357rem 0.714rem; }
+    }
+    @media (max-width: 25rem) {
+      html { font-size: 13px; }
+      .title h1 { font-size: 1.143rem; }
+      .topbar { padding: 0.571rem 0.643rem; }
+      .actions { gap: 0.429rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap" x-data="adminConsole()" x-init="init()">
     <header class="topbar">
       <div class="title">
         <h1>Amaya 控制台</h1>
       </div>
       <div class="actions">
-        <button id="btnRefresh">刷新</button>
-        <button class="btn-danger" id="btnRestart">重启</button>
-        <button id="btnLogout">退出</button>
+        <button @click="refreshAll">刷新</button>
+        <button @click="toggleAutoRefresh" x-text="autoRefresh ? '自动刷新: 开' : '自动刷新: 关'"></button>
+        <button class="btn-danger" @click="restart">重启</button>
+        <button @click="logout">退出</button>
       </div>
     </header>
 
     <section class="kpi-grid">
-      <article class="kpi"><div class="label">Messages</div><div id="kpiMessages" class="num">-</div></article>
-      <article class="kpi"><div class="label">Reminders</div><div id="kpiReminders" class="num">-</div></article>
-      <article class="kpi"><div class="label">Memory Groups</div><div id="kpiMemoryGroups" class="num">-</div></article>
+      <article class="kpi"><div class="label">Messages</div><div class="num" x-text="overview.messages">-</div></article>
+      <article class="kpi"><div class="label">Reminders</div><div class="num" x-text="overview.reminders">-</div></article>
+      <article class="kpi"><div class="label">Memory Groups</div><div class="num" x-text="overview.memory_groups">-</div></article>
       <article class="kpi">
         <div class="label">Service</div>
-        <div class="status"><span id="healthDot" class="dot"></span><span id="healthText">checking...</span></div>
-        <div id="uptime" class="status"></div>
+        <div class="status"><span class="dot" :class="health.status === 'ok' ? 'ok' : 'bad'"></span><span x-text="health.status === 'ok' ? 'running' : 'unhealthy'"></span></div>
+        <div class="status" x-text="`Uptime: ${Math.floor(health.uptime_seconds || 0)}s`"></div>
       </article>
+    </section>
+
+    <section class="kpi-grid">
+      <article class="kpi"><div class="label" title="Amaya 启动后累计的 LLM 请求次数">LLM 调用次数</div><div class="num" x-text="metrics.llm_call_count">0</div></article>
+      <article class="kpi"><div class="label" title="LLM 请求的平均耗时（毫秒）">LLM 平均延迟 (ms)</div><div class="num" x-text="metrics.llm_avg_latency_ms">0</div></article>
+      <article class="kpi"><div class="label" title="累计收到消息数/累计发送消息数（in/out）">消息收发计数 (入/出)</div><div class="num" x-text="`${metrics.msg_in_count}/${metrics.msg_out_count}`">0/0</div></article>
+      <article class="kpi"><div class="label" title="当前事件循环中的 asyncio 任务数量">活跃协程任务数</div><div class="num" x-text="activeTasks">0</div></article>
+    </section>
+
+    <section class="component-status">
+      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.db?.connected, true)"></span>DB</span>
+      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.telegram?.connected, componentStatus.telegram?.enabled)"></span>Telegram</span>
+      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.napcatqq?.connected, componentStatus.napcatqq?.enabled)"></span>NapCatQQ</span>
+      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.reminder?.running, true)"></span>Reminder</span>
+      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.amaya?.configured, true)"></span>Amaya</span>
     </section>
 
     <section class="layout">
-      <article class="card">
+      <article class="card pane" id="pane-left" x-show="!isCompactMobile || mobileView === 'logs'" x-cloak>
         <h2>日志</h2>
         <div class="log-controls">
-          <select id="logLevel">
-            <option value="">全部级别</option>
-            <option>TRACE</option><option>DEBUG</option><option>INFO</option>
-            <option>WARNING</option><option>ERROR</option><option>CRITICAL</option>
+          <select x-model="logs.stream">
+            <option value="main">主日志</option>
+            <option value="error">错误日志</option>
           </select>
-          <select id="logLines">
-            <option value="200">100 行</option>
+          <select x-model.number="logs.lines">
+            <option value="100">100 行</option>
             <option value="200">200 行</option>
-            <option value="500" selected>500 行</option>
+            <option value="500">500 行</option>
             <option value="1000">1000 行</option>
           </select>
-          <button id="btnReloadLogs">刷新日志</button>
+          <input type="text" placeholder="搜索日志内容" x-model.debounce.200ms="logs.search">
+          <button @click="refreshLogs">刷新日志</button>
         </div>
-        <div id="logs" class="log-stream">loading...</div>
+
+        <div class="log-levels">
+          <span class="log-level-title">级别</span>
+          <template x-for="lv in logs.allLevels" :key="lv">
+            <button
+              type="button"
+              class="log-level-pill"
+              :class="{ active: logLevelEnabled(lv) }"
+              @click="toggleLogLevel(lv)"
+              x-text="lv"
+            ></button>
+          </template>
+        </div>
+
+        <div class="log-stream">
+          <template x-if="logs.loading"><div class="muted">加载中...</div></template>
+          <template x-if="!logs.loading && logs.entries.length === 0"><div class="muted">暂无日志</div></template>
+
+          <template x-for="entry in logs.entries" :key="entry.id">
+            <article class="log-entry" :class="[`level-${entry.level}`, entry.long ? 'long' : '']">
+              <div class="log-head">
+                <span class="log-time" x-text="entry.time"></span>
+                <span class="log-level" x-text="entry.level"></span>
+                <span class="log-source" :title="entry.source" x-text="entry.source"></span>
+              </div>
+              <div class="log-body-wrap">
+                <div class="log-body" :class="entry.long && entry.collapsed ? 'collapsed' : ''" x-html="entry.rendered"></div>
+                <div class="log-fade"></div>
+              </div>
+              <div class="log-foot">
+                <span x-text="`${entry.lineCount} lines / ${entry.charCount} chars`"></span>
+                <button class="log-toggle" x-show="entry.long" @click="entry.collapsed = !entry.collapsed" x-text="entry.collapsed ? '展开' : '收起'"></button>
+              </div>
+            </article>
+          </template>
+        </div>
       </article>
 
-      <div class="right-stack">
-        <article class="card">
+      <article class="card pane" id="pane-right" x-show="!isCompactMobile || mobileView === 'data'" x-cloak>
+        <div class="tab-bar">
+          <button class="tab-btn" :class="activeTab === 'messages' ? 'active' : ''" @click="switchTab('messages')">消息</button>
+          <button class="tab-btn" :class="activeTab === 'reminders' ? 'active' : ''" @click="switchTab('reminders')">提醒</button>
+          <button class="tab-btn" :class="activeTab === 'memory' ? 'active' : ''" @click="switchTab('memory')">记忆</button>
+        </div>
+
+        <div class="tab-content">
+
+        <section class="tab-section" x-show="activeTab === 'messages'">
           <h2>最近消息</h2>
+          <div class="tool-row">
+            <input type="text" placeholder="搜索内容" x-model.debounce.300ms="messages.q">
+            <select x-model="messages.role">
+              <option value="">全部角色</option>
+              <option value="system">system</option>
+              <option value="world">world</option>
+              <option value="user">user</option>
+              <option value="amaya">amaya</option>
+            </select>
+            <button @click="refreshMessages">刷新</button>
+          </div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>时间</th><th>渠道</th><th>角色</th><th>内容</th></tr></thead>
-              <tbody id="messagesBody"></tbody>
+              <tbody>
+                <template x-if="messages.items.length === 0"><tr><td colspan="4">暂无数据</td></tr></template>
+                <template x-for="item in messages.items" :key="item.message_id">
+                  <tr @click="toggleMessageDetail(item)" style="cursor:pointer;">
+                    <td x-text="item.created_at_utc"></td>
+                    <td x-text="item.channel"></td>
+                    <td x-text="item.role"></td>
+                    <td class="content-cell" x-text="item.content"></td>
+                  </tr>
+                </template>
+              </tbody>
             </table>
           </div>
-        </article>
+          <div class="detail-panel" x-show="messages.expandedItem">
+            <div><strong>ID:</strong> <span x-text="messages.expandedItem?.message_id"></span></div>
+            <div><strong>时间:</strong> <span x-text="messages.expandedItem?.created_at_utc"></span></div>
+            <div><strong>渠道:</strong> <span x-text="messages.expandedItem?.channel"></span></div>
+            <div><strong>角色:</strong> <span x-text="messages.expandedItem?.role"></span></div>
+            <pre x-text="messages.expandedItem?.content"></pre>
+          </div>
+          <div class="pagination">
+            <span x-text="pageText(messages.offset, messages.limit, messages.total)"></span>
+            <div class="btns">
+              <button :disabled="messages.offset <= 0" @click="messagesPrev">上一页</button>
+              <button :disabled="messages.offset + messages.limit >= messages.total" @click="messagesNext">下一页</button>
+            </div>
+          </div>
+        </section>
 
-        <article class="card">
+        <section class="tab-section" x-show="activeTab === 'reminders'">
           <h2>最近提醒</h2>
+          <div class="tool-row">
+            <input type="text" placeholder="搜索标题" x-model.debounce.300ms="reminders.q">
+            <select x-model="reminders.status">
+              <option value="">全部状态</option>
+              <option value="pending">pending</option>
+              <option value="triggered">triggered</option>
+              <option value="sent">sent</option>
+            </select>
+            <button @click="refreshReminders">刷新</button>
+          </div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>ID</th><th>标题</th><th>状态</th><th>触发时间</th></tr></thead>
-              <tbody id="remindersBody"></tbody>
+              <tbody>
+                <template x-if="reminders.items.length === 0"><tr><td colspan="4">暂无数据</td></tr></template>
+                <template x-for="item in reminders.items" :key="item.reminder_id">
+                  <tr @click="toggleReminderDetail(item)" style="cursor:pointer;">
+                    <td x-text="item.reminder_id"></td>
+                    <td x-text="item.title"></td>
+                    <td x-text="item.status"></td>
+                    <td x-text="item.remind_at_min_utc"></td>
+                  </tr>
+                </template>
+              </tbody>
             </table>
           </div>
-        </article>
-      </div>
+          <div class="detail-panel" x-show="reminders.expandedItem">
+            <div><strong>ID:</strong> <span x-text="reminders.expandedItem?.reminder_id"></span></div>
+            <div><strong>状态:</strong> <span x-text="reminders.expandedItem?.status"></span></div>
+            <div><strong>触发时间:</strong> <span x-text="reminders.expandedItem?.remind_at_min_utc"></span></div>
+            <div><strong>下次动作:</strong> <span x-text="reminders.expandedItem?.next_action_at_min_utc"></span></div>
+            <div><strong>更新时间:</strong> <span x-text="reminders.expandedItem?.updated_at_utc"></span></div>
+            <pre x-text="reminders.expandedItem?.prompt"></pre>
+          </div>
+          <div class="pagination">
+            <span x-text="pageText(reminders.offset, reminders.limit, reminders.total)"></span>
+            <div class="btns">
+              <button :disabled="reminders.offset <= 0" @click="remindersPrev">上一页</button>
+              <button :disabled="reminders.offset + reminders.limit >= reminders.total" @click="remindersNext">下一页</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-section" x-show="activeTab === 'memory'">
+          <h2>Memory 浏览器</h2>
+          <div class="tool-row">
+            <input type="text" placeholder="搜索 memory group 标题" x-model.debounce.300ms="memory.groupQ">
+            <button @click="refreshMemoryGroups">刷新 Group</button>
+            <button @click="collapseGroup" :disabled="memory.expandedGroupId === null">收起展开项</button>
+          </div>
+
+          <div class="memory-groups">
+            <template x-if="memory.groups.length === 0"><div class="muted">暂无记忆组</div></template>
+
+            <template x-for="group in memory.groups" :key="group.memory_group_id">
+              <article class="memory-group">
+                <div class="memory-head">
+                  <div class="memory-title" x-text="group.title"></div>
+                  <button @click="toggleGroup(group.memory_group_id)">
+                    <span x-text="memory.expandedGroupId === group.memory_group_id ? '收起' : '展开'"></span>
+                  </button>
+                </div>
+                <div class="memory-meta" x-text="`ID=${group.memory_group_id} | 更新: ${group.updated_at_utc}`"></div>
+
+                <div class="tool-row" x-show="memory.expandedGroupId === group.memory_group_id" style="margin-bottom:6px;">
+                  <input type="text" placeholder="搜索 anchor/content" x-model.debounce.300ms="memory.pointQ">
+                  <button @click="refreshMemoryPoints(group.memory_group_id)">刷新 Point</button>
+                  <div></div>
+                </div>
+
+                <div class="memory-points" x-show="memory.expandedGroupId === group.memory_group_id">
+                  <template x-if="memory.pointLoading"><div class="muted">加载中...</div></template>
+                  <template x-if="!memory.pointLoading && memory.points.length === 0"><div class="muted">该组暂无 point</div></template>
+
+                  <template x-for="point in memory.points" :key="point.memory_point_id">
+                    <div class="memory-point">
+                      <div class="point-row">
+                        <span class="anchor" x-text="point.anchor"></span>
+                        <span class="badge" :class="point.memory_type" x-text="point.memory_type"></span>
+                      </div>
+                      <div class="point-content" x-text="point.content"></div>
+                      <div class="point-meta" x-text="`weight=${point.weight} | updated=${point.updated_at_utc}`"></div>
+                    </div>
+                  </template>
+                </div>
+              </article>
+            </template>
+          </div>
+
+          <div class="pagination">
+            <span x-text="pageText(memory.groupOffset, memory.groupLimit, memory.groupTotal)"></span>
+            <div class="btns">
+              <button :disabled="memory.groupOffset <= 0" @click="memoryGroupsPrev">上一页</button>
+              <button :disabled="memory.groupOffset + memory.groupLimit >= memory.groupTotal" @click="memoryGroupsNext">下一页</button>
+            </div>
+          </div>
+        </section>
+
+        </div>
+      </article>
     </section>
+
+    <nav class="bottom-nav" x-show="isCompactMobile" x-cloak>
+      <button
+        type="button"
+        class="bottom-nav-btn"
+        :class="mobileView === 'logs' ? 'active' : ''"
+        @click="mobileView = 'logs'"
+      >日志</button>
+      <button
+        type="button"
+        class="bottom-nav-btn"
+        :class="mobileView === 'data' ? 'active' : ''"
+        @click="mobileView = 'data'"
+      >数据</button>
+    </nav>
   </div>
 
   <script>
-    const byId = (id) => document.getElementById(id);
     const LOG_HEAD_RE = /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)\s+\|\s+([A-Z]+)\s+\|\s+(.+?)\s+-\s+(.*)$/;
 
     function getToken() {
       return sessionStorage.getItem('amaya_admin_token') || '';
-    }
-
-    function esc(value) {
-      return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
     }
 
     function looksLikeJson(text) {
@@ -399,9 +906,9 @@
 
     function normalizeEscapedText(text) {
       return String(text ?? '')
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\n', '\n')
-        .replaceAll('\t', '  ');
+        .replaceAll('\\r\\n', '\n')
+        .replaceAll('\\n', '\n')
+        .replaceAll('\\t', '  ');
     }
 
     function smartPrettyStruct(text) {
@@ -440,7 +947,6 @@
         }
 
         if (ch === '[' || ch === '{' || ch === '(') {
-          // 空容器（如 {} / [] / ()）保持单行，减少噪声。
           let j = i + 1;
           while (j < src.length && (src[j] === ' ' || src[j] === '\t' || src[j] === '\n')) j++;
           if (j < src.length && src[j] === closingOf[ch]) {
@@ -492,9 +998,6 @@
       const traceLike = upperLevel === 'TRACE' || normalized.includes('Response(') || normalized.includes('Context:[');
 
       if (!traceLike) return normalized;
-
-      // 针对 LLM TRACE 的可读化渲染：
-      // 1) 先保留原始语义；2) 按结构层级切分；3) 保持字符串内容不被破坏。
       return smartPrettyStruct(normalized);
     }
 
@@ -534,177 +1037,485 @@
       return entries;
     }
 
-    function createLogEntry(entry) {
-      const host = document.createElement('article');
-      const level = (entry.level || 'INFO').toUpperCase();
-      host.className = `log-entry level-${esc(level)}`;
+    function adminConsole() {
+      return {
+        activeTab: 'messages',
+        autoRefresh: true,
+        isCompactMobile: false,
+        mobileView: 'logs',
+        splitInstance: null,
+        resizeTimer: null,
+        resizeHandler: null,
+        health: { status: 'unknown', uptime_seconds: 0 },
+        overview: { messages: '-', reminders: '-', memory_groups: '-' },
+        metrics: { llm_call_count: 0, llm_avg_latency_ms: 0, msg_in_count: 0, msg_out_count: 0 },
+        componentStatus: {
+          db: { connected: false },
+          telegram: { enabled: false, connected: false },
+          napcatqq: { enabled: false, connected: false },
+          reminder: { running: false },
+          amaya: { configured: false },
+        },
+        activeTasks: 0,
+        messages: { items: [], q: '', role: '', limit: 20, offset: 0, total: 0, expandedItem: null },
+        reminders: { items: [], q: '', status: '', limit: 20, offset: 0, total: 0, expandedItem: null },
+        memory: {
+          groups: [],
+          groupQ: '',
+          groupLimit: 20,
+          groupOffset: 0,
+          groupTotal: 0,
+          expandedGroupId: null,
+          points: [],
+          pointQ: '',
+          pointLoading: false,
+        },
+        logs: {
+          entries: [],
+          allLevels: ['TRACE', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+          selectedLevels: ['TRACE', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+          search: '',
+          stream: 'main',
+          lines: 500,
+          loading: false,
+        },
+        pollers: { health: null, logs: null, active: null, metrics: null },
 
-      const pretty = formatLogMessage(entry.message || '', level);
-      const lineCount = pretty.split('\n').length;
-      const charCount = pretty.length;
-      const isLong = charCount > 1500 || lineCount > 22;
+        async init() {
+          if (!getToken()) {
+            window.location.href = '/admin/login';
+            return;
+          }
 
-      host.innerHTML = `
-        <div class="log-head">
-          <span class="log-time">${esc(entry.time)}</span>
-          <span class="log-level">${esc(level)}</span>
-          <span class="log-source" title="${esc(entry.source)}">${esc(entry.source)}</span>
-        </div>
-        <div class="log-body-wrap">
-          <pre class="log-body ${isLong ? 'collapsed' : ''}">${esc(pretty)}</pre>
-          <div class="log-fade"></div>
-        </div>
-        <div class="log-foot">
-          <span>${lineCount} lines / ${charCount} chars</span>
-          ${isLong ? '<button class="log-toggle">展开</button>' : '<span></span>'}
-        </div>
-      `;
+          this.syncViewportState();
+          this.resizeHandler = () => {
+            if (this.resizeTimer) clearTimeout(this.resizeTimer);
+            this.resizeTimer = setTimeout(() => this.handleResize(), 160);
+          };
+          window.addEventListener('resize', this.resizeHandler, { passive: true });
 
-      if (isLong) {
-        host.classList.add('long');
-        const btn = host.querySelector('.log-toggle');
-        const body = host.querySelector('.log-body');
-        btn.addEventListener('click', () => {
-          const collapsed = body.classList.toggle('collapsed');
-          btn.textContent = collapsed ? '展开' : '收起';
-        });
-      }
+          this.$watch('messages.q', () => { this.messages.offset = 0; if (this.activeTab === 'messages') this.refreshMessages(); });
+          this.$watch('messages.role', () => { this.messages.offset = 0; if (this.activeTab === 'messages') this.refreshMessages(); });
+          this.$watch('reminders.q', () => { this.reminders.offset = 0; if (this.activeTab === 'reminders') this.refreshReminders(); });
+          this.$watch('reminders.status', () => { this.reminders.offset = 0; if (this.activeTab === 'reminders') this.refreshReminders(); });
+          this.$watch('memory.groupQ', () => { this.memory.groupOffset = 0; if (this.activeTab === 'memory') this.refreshMemoryGroups(); });
+          this.$watch('memory.pointQ', () => {
+            if (this.activeTab === 'memory' && this.memory.expandedGroupId !== null) {
+              this.refreshMemoryPoints(this.memory.expandedGroupId);
+            }
+          });
+          this.$watch('logs.stream', () => this.refreshLogs());
+          this.$watch('logs.lines', () => this.refreshLogs());
+          this.$watch('logs.search', () => this.refreshLogs());
+          this.$watch('logs.selectedLevels', () => this.refreshLogs());
+          this.$watch('autoRefresh', () => this.resetPollers());
 
-      return host;
-    }
+          await this.refreshAll();
+          await this.$nextTick();
+          this.initSplit();
+          this.resetPollers();
+        },
 
-    async function api(path, options = {}) {
-      const token = getToken();
-      if (!token) {
-        window.location.href = '/admin/login';
-        return null;
-      }
+        shouldUseSplit() {
+          return window.innerWidth > 1200;
+        },
 
-      const opts = { ...options, headers: { ...(options.headers || {}) } };
-      opts.headers['Authorization'] = `Bearer ${token}`;
+        syncViewportState() {
+          this.isCompactMobile = window.innerWidth <= 640;
+          if (!this.isCompactMobile) {
+            this.mobileView = 'logs';
+          }
+        },
 
-      const res = await fetch(path, opts);
-      if (res.status === 401) {
-        sessionStorage.removeItem('amaya_admin_token');
-        window.location.href = '/admin/login';
-        return null;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || `请求失败: ${res.status}`);
-      }
-      return res.json();
-    }
+        handleResize() {
+          this.syncViewportState();
+          if (this.shouldUseSplit()) {
+            this.initSplit();
+            return;
+          }
+          this.destroySplit();
+        },
 
-    function renderRows(containerId, rows, cols) {
-      const body = byId(containerId);
-      body.innerHTML = '';
-      if (!rows || rows.length === 0) {
-        body.innerHTML = `<tr><td colspan="${cols.length}">暂无数据</td></tr>`;
-        return;
-      }
-      for (const row of rows) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = cols.map(c => `<td>${esc(row[c])}</td>`).join('');
-        body.appendChild(tr);
-      }
-    }
+        destroySplit() {
+          if (!this.splitInstance) return;
+          this.splitInstance.destroy();
+          this.splitInstance = null;
+        },
 
-    function renderLogs(lines) {
-      const root = byId('logs');
-      const entries = parseLogEntries(lines);
-      root.innerHTML = '';
-      if (!entries.length) {
-        root.textContent = '暂无日志';
-        return;
-      }
+        initSplit() {
+          if (!this.shouldUseSplit() || !window.Split) {
+            this.destroySplit();
+            return;
+          }
+          if (this.splitInstance) return;
+          this.splitInstance = window.Split(['#pane-left', '#pane-right'], {
+            sizes: [57, 43],
+            minSize: [320, 280],
+            gutterSize: 10,
+            snapOffset: 8,
+          });
+        },
 
-      for (const entry of entries.reverse()) {
-        root.appendChild(createLogEntry(entry));
-      }
-    }
+        componentDotClass(isActive, isEnabled) {
+          if (!isEnabled) return 'off';
+          return isActive ? 'ok' : 'bad';
+        },
 
-    async function refreshHealth() {
-      const data = await api('/api/v1/health');
-      if (!data) return;
-      byId('healthDot').className = 'dot ' + (data.status === 'ok' ? 'ok' : 'bad');
-      byId('healthText').textContent = data.status === 'ok' ? 'running' : 'unhealthy';
-      byId('uptime').textContent = `Uptime: ${Math.floor(data.uptime_seconds || 0)}s`;
-    }
+        logLevelEnabled(level) {
+          return this.logs.selectedLevels.includes(level);
+        },
 
-    async function refreshOverview() {
-      const data = await api('/api/v1/overview');
-      if (!data) return;
-      byId('kpiMessages').textContent = data.counts.messages;
-      byId('kpiReminders').textContent = data.counts.reminders;
-      byId('kpiMemoryGroups').textContent = data.counts.memory_groups;
-    }
+        toggleLogLevel(level) {
+          const idx = this.logs.selectedLevels.indexOf(level);
+          if (idx >= 0) {
+            this.logs.selectedLevels.splice(idx, 1);
+            return;
+          }
+          this.logs.selectedLevels.push(level);
+        },
 
-    async function refreshMessages() {
-      const data = await api('/api/v1/messages?limit=20');
-      if (!data) return;
-      renderRows('messagesBody', data.items, ['created_at_utc', 'channel', 'role', 'content']);
-    }
+        escapeHtml(text) {
+          return String(text ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+        },
 
-    async function refreshReminders() {
-      const data = await api('/api/v1/reminders?limit=20');
-      if (!data) return;
-      renderRows('remindersBody', data.items, ['reminder_id', 'title', 'status', 'remind_at_min_utc']);
-    }
+        highlightLog(text) {
+          const escaped = this.escapeHtml(text);
+          const keyword = String(this.logs.search || '').trim();
+          if (!keyword) return escaped;
+          const safeKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const re = new RegExp(`(${safeKeyword})`, 'ig');
+          return escaped.replace(re, '<mark>$1</mark>');
+        },
 
-    async function refreshLogs() {
-      const level = byId('logLevel').value;
-      const lines = byId('logLines').value;
-      let q = `?lines=${encodeURIComponent(lines)}`;
-      if (level) q += `&level=${encodeURIComponent(level)}`;
-      const data = await api('/api/v1/logs' + q);
-      if (!data) return;
-      renderLogs(data.lines || []);
-    }
+        async api(path, options = {}) {
+          const token = getToken();
+          if (!token) {
+            window.location.href = '/admin/login';
+            return null;
+          }
 
-    async function refreshAll() {
-      try {
-        await Promise.all([
-          refreshHealth(),
-          refreshOverview(),
-          refreshMessages(),
-          refreshReminders(),
-          refreshLogs(),
-        ]);
-      } catch (err) {
-        alert(err.message || '刷新失败');
-      }
-    }
+          const opts = { ...options, headers: { ...(options.headers || {}) } };
+          opts.headers.Authorization = `Bearer ${token}`;
 
-    byId('btnRefresh').addEventListener('click', refreshAll);
-    byId('btnReloadLogs').addEventListener('click', refreshLogs);
-    byId('logLevel').addEventListener('change', refreshLogs);
-    byId('logLines').addEventListener('change', refreshLogs);
+          const res = await fetch(path, opts);
+          if (res.status === 401) {
+            sessionStorage.removeItem('amaya_admin_token');
+            window.location.href = '/admin/login';
+            return null;
+          }
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.detail || `请求失败: ${res.status}`);
+          }
+          return res.json();
+        },
 
-    byId('btnRestart').addEventListener('click', async () => {
-      if (!confirm('确认重启服务？')) return;
-      try {
-        await api('/api/v1/admin/restart', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason: 'web-admin' }),
-        });
-        alert('重启请求已发送');
-      } catch (err) {
-        alert(err.message || '重启失败');
-      }
-    });
+        pageText(offset, limit, total) {
+          if (!total) return '共 0 条';
+          const start = offset + 1;
+          const end = Math.min(offset + limit, total);
+          return `第 ${start}-${end} 条，共 ${total} 条`;
+        },
 
-    byId('btnLogout').addEventListener('click', () => {
-      sessionStorage.removeItem('amaya_admin_token');
-      window.location.href = '/admin/login';
-    });
+        switchTab(tab) {
+          this.activeTab = tab;
+          this.refreshActiveTab();
+        },
 
-    if (!getToken()) {
-      window.location.href = '/admin/login';
-    } else {
-      refreshAll();
-      setInterval(refreshHealth, 15000);
+        async refreshHealth() {
+          const data = await this.api('/api/v1/health');
+          if (!data) return;
+          this.health = data;
+        },
+
+        async refreshOverview() {
+          const data = await this.api('/api/v1/overview');
+          if (!data) return;
+          this.overview = {
+            messages: data.counts?.messages ?? 0,
+            reminders: data.counts?.reminders ?? 0,
+            memory_groups: data.counts?.memory_groups ?? 0,
+          };
+        },
+
+        async refreshMetrics() {
+          const data = await this.api('/api/v1/metrics');
+          if (!data) return;
+          this.metrics = data.runtime || this.metrics;
+          this.componentStatus = data.components || this.componentStatus;
+          this.activeTasks = data.active_tasks || 0;
+        },
+
+        async refreshMessages() {
+          const q = new URLSearchParams({
+            limit: String(this.messages.limit),
+            offset: String(this.messages.offset),
+          });
+          if (this.messages.q) q.set('q', this.messages.q);
+          if (this.messages.role) q.set('role', this.messages.role);
+
+          const data = await this.api(`/api/v1/messages?${q.toString()}`);
+          if (!data) return;
+          this.messages.items = data.items || [];
+          this.messages.total = data.total || 0;
+          if (this.messages.expandedItem) {
+            const id = this.messages.expandedItem.message_id;
+            this.messages.expandedItem = this.messages.items.find((item) => item.message_id === id) || null;
+          }
+        },
+
+        toggleMessageDetail(item) {
+          if (this.messages.expandedItem && this.messages.expandedItem.message_id === item.message_id) {
+            this.messages.expandedItem = null;
+            return;
+          }
+          this.messages.expandedItem = item;
+        },
+
+        async refreshReminders() {
+          const q = new URLSearchParams({
+            limit: String(this.reminders.limit),
+            offset: String(this.reminders.offset),
+          });
+          if (this.reminders.q) q.set('q', this.reminders.q);
+          if (this.reminders.status) q.set('status', this.reminders.status);
+
+          const data = await this.api(`/api/v1/reminders?${q.toString()}`);
+          if (!data) return;
+          this.reminders.items = data.items || [];
+          this.reminders.total = data.total || 0;
+          if (this.reminders.expandedItem) {
+            const id = this.reminders.expandedItem.reminder_id;
+            this.reminders.expandedItem = this.reminders.items.find((item) => item.reminder_id === id) || null;
+          }
+        },
+
+        toggleReminderDetail(item) {
+          if (this.reminders.expandedItem && this.reminders.expandedItem.reminder_id === item.reminder_id) {
+            this.reminders.expandedItem = null;
+            return;
+          }
+          this.reminders.expandedItem = item;
+        },
+
+        async refreshMemoryGroups() {
+          const q = new URLSearchParams({
+            limit: String(this.memory.groupLimit),
+            offset: String(this.memory.groupOffset),
+          });
+          if (this.memory.groupQ) q.set('q', this.memory.groupQ);
+
+          const data = await this.api(`/api/v1/memory/groups?${q.toString()}`);
+          if (!data) return;
+          this.memory.groups = data.items || [];
+          this.memory.groupTotal = data.total || 0;
+
+          if (this.memory.expandedGroupId !== null) {
+            const stillExists = this.memory.groups.some((g) => g.memory_group_id === this.memory.expandedGroupId);
+            if (!stillExists) {
+              this.memory.expandedGroupId = null;
+              this.memory.points = [];
+              this.memory.pointQ = '';
+            }
+          }
+        },
+
+        async refreshMemoryPoints(groupId) {
+          if (groupId === null || groupId === undefined) return;
+          this.memory.pointLoading = true;
+
+          try {
+            const q = new URLSearchParams({
+              memory_group_id: String(groupId),
+              limit: '100',
+              offset: '0',
+            });
+            if (this.memory.pointQ) q.set('q', this.memory.pointQ);
+
+            const data = await this.api(`/api/v1/memory/points?${q.toString()}`);
+            if (!data) return;
+            this.memory.points = data.items || [];
+          } finally {
+            this.memory.pointLoading = false;
+          }
+        },
+
+        async refreshLogs() {
+          this.logs.loading = true;
+          try {
+            if (this.logs.selectedLevels.length === 0) {
+              this.logs.entries = [];
+              return;
+            }
+
+            const q = new URLSearchParams({
+              lines: String(this.logs.lines),
+              stream: this.logs.stream,
+            });
+            if (this.logs.search) {
+              q.set('q', this.logs.search);
+            }
+            if (this.logs.selectedLevels.length > 0) {
+              q.set('levels', this.logs.selectedLevels.join(','));
+            }
+
+            const data = await this.api(`/api/v1/logs?${q.toString()}`);
+            if (!data) return;
+
+            const entries = parseLogEntries(data.lines || []).reverse();
+            this.logs.entries = entries.map((entry, idx) => {
+              const level = String(entry.level || 'INFO').toUpperCase();
+              const pretty = formatLogMessage(entry.message || '', level);
+              const lineCount = pretty.split('\n').length;
+              const charCount = pretty.length;
+              const long = charCount > 1500 || lineCount > 22;
+              return {
+                id: `${entry.time}-${entry.source}-${idx}`,
+                time: entry.time,
+                level,
+                source: entry.source,
+                pretty,
+                lineCount,
+                charCount,
+                long,
+                rendered: this.highlightLog(pretty),
+                collapsed: true,
+              };
+            });
+          } finally {
+            this.logs.loading = false;
+          }
+        },
+
+        async refreshActiveTab() {
+          if (this.activeTab === 'messages') return this.refreshMessages();
+          if (this.activeTab === 'reminders') return this.refreshReminders();
+          if (this.activeTab === 'memory') {
+            await this.refreshMemoryGroups();
+            if (this.memory.expandedGroupId !== null) {
+              await this.refreshMemoryPoints(this.memory.expandedGroupId);
+            }
+          }
+        },
+
+        async refreshAll() {
+          try {
+            await Promise.all([
+              this.refreshHealth(),
+              this.refreshOverview(),
+              this.refreshMetrics(),
+              this.refreshLogs(),
+              this.refreshMessages(),
+              this.refreshReminders(),
+              this.refreshMemoryGroups(),
+            ]);
+            if (this.memory.expandedGroupId !== null) {
+              await this.refreshMemoryPoints(this.memory.expandedGroupId);
+            }
+          } catch (err) {
+            alert(err.message || '刷新失败');
+          }
+        },
+
+        resetPollers() {
+          for (const key of Object.keys(this.pollers)) {
+            if (this.pollers[key]) {
+              clearInterval(this.pollers[key]);
+              this.pollers[key] = null;
+            }
+          }
+
+          if (!this.autoRefresh) return;
+
+          this.pollers.health = setInterval(() => this.refreshHealth(), 15000);
+          this.pollers.metrics = setInterval(() => this.refreshMetrics(), 15000);
+          this.pollers.logs = setInterval(() => this.refreshLogs(), 15000);
+          this.pollers.active = setInterval(() => this.refreshActiveTab(), 30000);
+        },
+
+        async messagesPrev() {
+          this.messages.offset = Math.max(0, this.messages.offset - this.messages.limit);
+          await this.refreshMessages();
+        },
+        async messagesNext() {
+          if (this.messages.offset + this.messages.limit >= this.messages.total) return;
+          this.messages.offset += this.messages.limit;
+          await this.refreshMessages();
+        },
+
+        async remindersPrev() {
+          this.reminders.offset = Math.max(0, this.reminders.offset - this.reminders.limit);
+          await this.refreshReminders();
+        },
+        async remindersNext() {
+          if (this.reminders.offset + this.reminders.limit >= this.reminders.total) return;
+          this.reminders.offset += this.reminders.limit;
+          await this.refreshReminders();
+        },
+
+        async memoryGroupsPrev() {
+          this.memory.groupOffset = Math.max(0, this.memory.groupOffset - this.memory.groupLimit);
+          await this.refreshMemoryGroups();
+        },
+        async memoryGroupsNext() {
+          if (this.memory.groupOffset + this.memory.groupLimit >= this.memory.groupTotal) return;
+          this.memory.groupOffset += this.memory.groupLimit;
+          await this.refreshMemoryGroups();
+        },
+
+        async toggleGroup(groupId) {
+          if (this.memory.expandedGroupId === groupId) {
+            this.collapseGroup();
+            return;
+          }
+          this.memory.expandedGroupId = groupId;
+          this.memory.pointQ = '';
+          this.memory.points = [];
+          await this.refreshMemoryPoints(groupId);
+        },
+        collapseGroup() {
+          this.memory.expandedGroupId = null;
+          this.memory.points = [];
+          this.memory.pointQ = '';
+        },
+
+        toggleAutoRefresh() {
+          this.autoRefresh = !this.autoRefresh;
+        },
+
+        async restart() {
+          if (!confirm('确认重启服务？')) return;
+          try {
+            await this.api('/api/v1/admin/restart', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reason: 'web-admin' }),
+            });
+            alert('重启请求已发送');
+          } catch (err) {
+            alert(err.message || '重启失败');
+          }
+        },
+
+        logout() {
+          this.destroySplit();
+          if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+            this.resizeHandler = null;
+          }
+          if (this.resizeTimer) {
+            clearTimeout(this.resizeTimer);
+            this.resizeTimer = null;
+          }
+          sessionStorage.removeItem('amaya_admin_token');
+          window.location.href = '/admin/login';
+        },
+      };
     }
   </script>
 </body>

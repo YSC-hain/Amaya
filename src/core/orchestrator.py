@@ -2,6 +2,7 @@ from logger import logger
 from config.settings import *
 from events import bus, E
 from datamodel import *
+from metrics import runtime_metrics
 from storage.work_memory import *
 import storage.message as message_storage
 import storage.reminder as reminder_storage
@@ -14,6 +15,7 @@ from functions.work_memory_func import *
 
 @bus.on(E.IO_SEND_MESSAGE)
 async def save_message(msg: OutgoingMessage) -> None:
+    runtime_metrics.record_msg_out()
     await message_storage.create_message(
         msg.channel_type,
         "amaya",
@@ -24,6 +26,7 @@ async def save_message(msg: OutgoingMessage) -> None:
 
 @bus.on(E.IO_MESSAGE_RECEIVED)
 async def handle_incoming_message(msg: IncomingMessage) -> None:
+    runtime_metrics.record_msg_in()
     logger.info(f"开始处理来自用户的消息")
     await message_storage.create_message(
         msg.channel_type,
@@ -37,6 +40,7 @@ async def handle_incoming_message(msg: IncomingMessage) -> None:
 
 @bus.on(E.REMINDER_TRIGGERED)
 async def handle_reminder_triggered(reminder: Reminder):
+    runtime_metrics.record_reminder_triggered()
     logger.info(f"触发 Reminder: id={reminder.reminder_id}, title={reminder.title}")
     reminder.status = "triggered"
     reminder.next_action_at_min_utc = None  # ToDo: 未来可能需要更复杂的状态机设计

@@ -7,8 +7,7 @@ import uvicorn
 from config.settings import ADMIN_HTTP_HOST, ADMIN_HTTP_PORT
 from logger import logger
 
-from .app import create_app
-from .schemas import RuntimeControl
+from .app import RuntimeControl, create_app
 
 
 async def _wait_shutdown_signal(shutdown_event: asyncio.Event, server: uvicorn.Server) -> None:

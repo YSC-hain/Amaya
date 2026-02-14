@@ -1,3 +1,14 @@
+"""Amaya 核心模块
+
+# 消息处理流水线
+Amaya 处理新消息的方式是异步的，因此能做到类似真人的效果，其主要分为以下几个阶段：
+1. 通知 Amaya 核心收到新消息：当收到新消息时，会触发一个事件，通知 Amaya 开始处理消息。
+2. 规划回复: Amaya 会根据当前的消息内容、上下文信息（包括世界信息、记忆系统、未触发的提醒等）以及最近的对话历史（包括已经分段后暂未发送的消息），调用 LLM 来规划回复内容。LLM 的回复可以包含特殊的分段控制符，来指导 Amaya 将回复拆成多段发送，以及每段之间的时间间隔。
+3. 发送回复: Amaya 会根据规划的回复内容和分段控制符, 逐段发送消息给用户。每段消息发送后, Amaya 会等待指定的时间间隔（如果有的话）再发送下一段消息。
+4. 重新规划: 如果在 Amaya 回复的过程中, 又收到了新的消息, Amaya 会取消当前的规划任务，并重新开始规划，以确保回复内容能够及时响应最新的消息。
+
+"""
+
 import asyncio
 import time
 import re
@@ -8,6 +19,7 @@ from config.settings import *
 from datamodel import *
 from events import bus, E
 from llm.base import LLMClient, LLMContextItem
+from metrics import runtime_metrics
 from storage.work_memory import *
 import storage.message as message_storage
 import storage.reminder as reminder_storage
@@ -19,8 +31,6 @@ __all__ = ["Amaya", "configure_amaya", "require_amaya"]
 _SEGMENT_MARKER_PATTERN = re.compile(r"^-#(\d+)#-$")
 
 class Amaya:
-    """Amaya 单例模块"""
-
     def __init__(self, smart_llm_client: LLMClient, fast_llm_client: LLMClient | None = None, channel: tuple[ChannelType, dict | None] = None) -> None:
         if channel is None:
             logger.critical("未配置 Amaya 的主联系方式，无法启动！请检查 PRIMARY_CONTACT_METHOD 设置")
@@ -35,6 +45,14 @@ class Amaya:
         self.unsend_messages: list[tuple[int, str]] = []
         self.unsend_messages_buffer: list[tuple[int, str]] = []  # 类似人脑的“短期记忆”，是Amaya的思考缓存
         self.think_task: asyncio.Task[None] | None = None
+
+    def get_status(self) -> dict[str, object]:
+        return {
+            "thinking": self.think_task is not None and not self.think_task.done(),
+            "unsent_queue": len(self.unsend_messages),
+            "buffered_segments": len(self.unsend_messages_buffer),
+            "new_message_pending": self.get_new_msg_event.is_set(),
+        }
 
     def notify_new_message(self) -> None:
         self.get_new_msg_event.set()
@@ -153,13 +171,21 @@ class Amaya:
         })
 
         start_time = time.perf_counter()
-        res = await self.smart_llm_client.generate_response(
-            llm_context,
-            append_inst,
-            allow_tools,
-        )
-        end_time = time.perf_counter()
-        logger.debug(f"LLM API 响应时间: {end_time - start_time:.2f} 秒")
+        llm_call_error = False
+        try:
+            res = await self.smart_llm_client.generate_response(
+                llm_context,
+                append_inst,
+                allow_tools,
+            )
+        except Exception:
+            llm_call_error = True
+            raise
+        finally:
+            end_time = time.perf_counter()
+            latency_seconds = end_time - start_time
+            runtime_metrics.record_llm_call(latency_ms=latency_seconds * 1000, error=llm_call_error)
+            logger.debug(f"LLM API 响应时间: {latency_seconds:.2f} 秒")
 
         segments = self._split_segmented_response(res)
         logger.info(f"Amaya 完成回复规划，共 {len(segments)} 段回复")
@@ -196,7 +222,7 @@ class Amaya:
 
         if not segments:
             logger.warning(
-                f"要发送给用户 {self.user_id} 的消息在分段解析后无可发送段落，回退为原文单段发送: raw_len={len(raw)}"
+                f"分段解析后无可发送段落，回退为原文单段发送: raw_len={len(raw)}"
             )
             return [(0, raw)]
 
