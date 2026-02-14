@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import asyncio
+import re
 import time
 from typing import List, Literal, cast
 
@@ -35,12 +36,6 @@ class Amaya:
         self.fast_llm_client = fast_llm_client or smart_llm_client
         self.unread_queue: asyncio.Queue[AmayaTask] = asyncio.Queue()
 
-    def enqueue_task(self, task: AmayaTask) -> None:
-        self.unread_queue.put_nowait(task)
-        logger.trace(
-            f"用户 {self.user_id} 任务入队: task_type={task.task_type}, queue_size={self.unread_queue.qsize()}"
-        )
-
     async def run_loop(self) -> None:
         logger.info(f"用户 {self.user_id} 的 Amaya worker 已启动")
         try:
@@ -53,6 +48,12 @@ class Amaya:
         except asyncio.CancelledError:
             logger.info(f"用户 {self.user_id} 的 Amaya worker 已停止")
             raise
+
+    def enqueue_task(self, task: AmayaTask) -> None:
+        self.unread_queue.put_nowait(task)
+        logger.trace(
+            f"用户 {self.user_id} 任务入队: task_type={task.task_type}, queue_size={self.unread_queue.qsize()}"
+        )
 
     async def _process_with_retry(self, task: AmayaTask) -> None:
         max_attempts = 3
@@ -76,6 +77,7 @@ class Amaya:
                 await asyncio.sleep(delay_seconds)
 
     async def _dispatch_task(self, task: AmayaTask) -> None:
+        """调度任务到具体处理函数"""
         if task.task_type == "incoming_message":
             await self._handle_incoming_message(cast(IncomingMessage, task.payload))
             return
@@ -86,11 +88,11 @@ class Amaya:
 
         logger.error(f"未知的任务类型: {task.task_type}")
 
-    async def process_msg(
+    async def _process_msg(
         self,
         append_inst: str | None = None,
         append_world_context: str | None = None,
-        allow_tools: bool = True,  # 未来应该拓展为“允许使用的工具集”
+        allow_tools: bool = True,   # 未来应该拓展为“允许使用的工具集”
     ) -> str:
         llm_context: List[LLMContextItem] | None = None
 
@@ -158,20 +160,89 @@ class Amaya:
 
         return res
 
+    def _split_segmented_response(self, raw: str) -> list[tuple[int, str]]:
+
+        segments: list[tuple[int, str]] = []
+        pending_delay_seconds = 0
+        current_lines: list[str] = []
+
+        def flush_current_segment() -> None:
+            nonlocal pending_delay_seconds, current_lines
+
+            segment_text = "\n".join(current_lines)
+            current_lines = []
+            if segment_text.strip():
+                segments.append((pending_delay_seconds, segment_text))
+            pending_delay_seconds = 0
+
+        for line in raw.splitlines():
+            marker_match = re.compile(r"^-#(\d+)#-$").fullmatch(line.strip())  # 控制符格式为 `-#<数字>#-`，例如 `-#3#-`` 表示接下来要发送的消息需要在前一条消息发送后等待3秒。
+            if marker_match is not None:
+                if current_lines:
+                    flush_current_segment()
+                pending_delay_seconds += int(marker_match.group(1))
+                continue
+
+            current_lines.append(line)
+
+        if current_lines:
+            flush_current_segment()
+
+        if not segments:
+            logger.warning(
+                f"要发送给用户 {self.user_id} 的消息在分段解析后无可发送段落，回退为原文单段发送: raw_len={len(raw)}"
+            )
+            return [(0, raw)]
+
+        return segments
+
+    async def _emit_segmented_message(
+        self,
+        base_message: OutgoingMessage,
+        segments: list[tuple[int, str]],
+    ) -> None:
+        logger.info(
+            f" 即将分段发送消息给用户 {self.user_id}: segment_count={len(segments)}, channel={base_message.channel_type}"
+        )
+
+        # ToDo: 若新消息在分段发送期间到来，应中断当前发送并重新思考回复。
+        for idx, (delay_seconds, segment_text) in enumerate(segments, start=1):
+            if delay_seconds > 0:
+                logger.trace(
+                    f"用户 {self.user_id} 分段发送等待: segment={idx}/{len(segments)}, delay={delay_seconds}s"
+                )
+                await asyncio.sleep(delay_seconds)
+
+            logger.info(
+                f"向用户 {self.user_id} 发送分段消息: segment={idx}/{len(segments)}, "
+                f"delay={delay_seconds}s, text_len={len(segment_text)}"
+            )
+            bus.emit(
+                E.IO_SEND_MESSAGE,
+                OutgoingMessage(
+                    channel_type=base_message.channel_type,
+                    user_id=base_message.user_id,
+                    content=segment_text,
+                    attachments=base_message.attachments,
+                    channel_context=base_message.channel_context,
+                    metadata=base_message.metadata,
+                ),
+            )
+
     async def _handle_incoming_message(self, msg: IncomingMessage) -> None:
         logger.info(f"处理来自用户 {self.user_id} 的入队消息")
         # ToDo: 未来可升级为“短时间窗聚合未读消息”，以实现更拟人的连续对话体验。
-        res = await self.process_msg()
-
-        bus.emit(
-            E.IO_SEND_MESSAGE,
+        res = await self._process_msg()
+        segments = self._split_segmented_response(res)
+        await self._emit_segmented_message(
             OutgoingMessage(
                 channel_type=msg.channel_type,
                 user_id=self.user_id,
-                content=res,
+                content="",  # 实际发送内容在分段循环内逐段填充
                 channel_context=msg.channel_context,
                 metadata=msg.metadata,
             ),
+            segments,
         )
 
     async def _handle_reminder(self, reminder: Reminder) -> None:
@@ -186,7 +257,7 @@ class Amaya:
             "说明：请根据上下文与要求，直接生成要发给用户的提醒消息。"
         )
 
-        res = await self.process_msg(
+        res = await self._process_msg(
             append_world_context=reminder_context,
             append_inst="\n现在, 你需要输出一条要发送给用户的提醒消息（语气自然友好、简洁、提醒现在应该做什么）",
             allow_tools=True,  # 还是得允许使用工具
@@ -208,14 +279,15 @@ class Amaya:
             )
             return
 
-        bus.emit(
-            E.IO_SEND_MESSAGE,
+        segments = self._split_segmented_response(res)
+        await self._emit_segmented_message(
             OutgoingMessage(
                 channel_type=channel_type,
                 user_id=self.user_id,
-                content=res,
+                content="",  # 实际发送内容在分段循环内逐段填充
                 channel_context=None,
             ),
+            segments,
         )
 
 
@@ -313,6 +385,7 @@ async def handle_reminder_triggered(reminder: Reminder):
 
     manager = _require_amaya_manager()
     manager.enqueue_reminder(reminder)
+
 
 
 async def main_loop(shutdown_event: asyncio.Event = asyncio.Event()) -> None:
