@@ -39,11 +39,14 @@ class RuntimeMetrics:
         if self.llm_call_count > 0:
             avg_latency_ms = self.llm_total_latency_ms / self.llm_call_count
 
+        avg_latency_s = avg_latency_ms / 1000.0
+
         return {
             "llm_call_count": self.llm_call_count,
             "llm_error_count": self.llm_error_count,
             "llm_total_latency_ms": round(self.llm_total_latency_ms, 2),
             "llm_avg_latency_ms": round(avg_latency_ms, 2),
+            "llm_avg_latency_s": round(avg_latency_s, 3),
             "msg_in_count": self.msg_in_count,
             "msg_out_count": self.msg_out_count,
             "reminder_triggered_count": self.reminder_triggered_count,

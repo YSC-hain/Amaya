@@ -118,6 +118,31 @@
       gap: 0.571rem;
       margin-bottom: 0.571rem;
     }
+    
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.571rem;
+      margin-bottom: 0.571rem;
+    }
+
+    .service-card {
+      border: 1px solid var(--line);
+      border-radius: 0.786rem;
+      background: var(--panel);
+      padding: 0.714rem;
+      margin-bottom: 0.571rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.429rem;
+    }
+    .service-card .head-row {
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center;
+      min-width: 0;
+    }
+
     .kpi {
       border: 1px solid var(--line);
       border-radius: 0.786rem;
@@ -126,13 +151,17 @@
     }
     .kpi .label { color: var(--muted); font-size: 0.857rem; }
     .kpi .num { font-size: 2rem; font-weight: 700; margin-top: 0.286rem; line-height: 1.15; }
-    .status {
-      display: inline-flex;
-      align-items: center;
+    
+    .service-uptime { font-size: 0.857rem; color: var(--muted); font-family: "IBM Plex Mono", "Menlo", monospace; white-space: nowrap; }
+    .service-uptime.ok { color: var(--ok); }
+    .service-uptime.bad { color: var(--danger); }
+    .service-uptime .sep { opacity: 0.5; margin: 0 0.3em; }
+
+    .service-chips {
+      display: flex;
+      flex-wrap: wrap;
       gap: 0.429rem;
-      font-size: 0.857rem;
-      color: var(--muted);
-      margin-top: 0.571rem;
+      align-items: center;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot-idle); }
     .dot.ok { background: var(--ok); }
@@ -518,19 +547,6 @@
       word-break: break-word;
       font-family: "IBM Plex Mono", "Menlo", monospace;
     }
-    .component-status {
-      border: 1px solid var(--line);
-      border-radius: 0.786rem;
-      background: var(--panel);
-      padding: 0.714rem;
-      margin-bottom: 0.571rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.714rem;
-      align-items: center;
-      font-size: 0.857rem;
-      color: var(--muted);
-    }
     .status-chip {
       display: inline-flex;
       gap: 0.429rem;
@@ -568,7 +584,7 @@
 
     @media (min-width: 100rem) {
       .wrap { width: min(112rem, 95vw); }
-      .topbar, .kpi, .component-status, .card { padding: 0.857rem; }
+      .topbar, .kpi, .card { padding: 0.857rem; }
       .kpi .num { font-size: 2.15rem; }
       .layout { height: clamp(46rem, 83dvh, 70rem); }
     }
@@ -581,6 +597,13 @@
       .tool-row { grid-template-columns: 1.2fr auto auto; }
     }
 
+    @media (min-width: 60rem) {
+      .service-card { flex-direction: row; justify-content: space-between; align-items: center; }
+      .service-chips { flex: 1; justify-content: flex-end; margin-top: 0; }
+      .service-chips .status-chip { margin-left: 0.286rem; }
+      .head-row { gap: 1rem; }
+    }
+
     @media (max-width: 75rem) {
       .layout { display: block; min-height: auto; height: auto; }
       .gutter { display: none; }
@@ -589,6 +612,7 @@
       .log-stream { max-height: 460px; }
     }
     @media (max-width: 48rem) {
+      .overview-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .tool-row, .log-controls { grid-template-columns: 1fr; }
       .pagination { flex-direction: column; align-items: flex-start; }
@@ -596,12 +620,29 @@
     @media (max-width: 40rem) {
       body { padding-bottom: 4.5rem; }
       .wrap { width: min(92rem, calc(100vw - 1rem)); margin: 0.571rem auto 1rem; }
-      .kpi-grid { grid-template-columns: 1fr; }
+      .kpi-grid, .overview-grid { grid-template-columns: 1fr; }
       .actions { width: 100%; }
       .actions button, .actions select { flex: 1; min-width: 0; }
       .bottom-nav { display: flex; }
       .tab-content { padding-right: 0; }
       .log-level-pill { padding: 0.357rem 0.714rem; }
+
+      .service-card { gap: 0.5rem; }
+      .service-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        margin-right: -0.714rem; /* Extend to edge */
+        padding-right: 0.714rem;
+        /* Hide scrollbar */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        mask-image: linear-gradient(to right, black 95%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, black 95%, transparent 100%);
+      }
+      .service-chips::-webkit-scrollbar { display: none; }
+      .status-chip { flex-shrink: 0; }
+      .head-row { margin-bottom: 0px; }
     }
     @media (max-width: 25rem) {
       html { font-size: 13px; }
@@ -618,41 +659,48 @@
   <div class="wrap" x-data="adminConsole()" x-init="init()">
     <header class="topbar">
       <div class="title">
-        <h1>Amaya 控制台</h1>
+        <h1>Amaya</h1>
       </div>
       <div class="actions">
         <button @click="refreshAll">刷新</button>
         <button @click="toggleAutoRefresh" x-text="autoRefresh ? '自动刷新: 开' : '自动刷新: 关'"></button>
-        <button class="btn-danger" @click="restart">重启</button>
+        <button class="btn-danger" @click="restart">重启 Amaya</button>
         <button @click="logout">退出</button>
       </div>
     </header>
 
-    <section class="kpi-grid">
+    <section class="overview-grid">
       <article class="kpi"><div class="label">Messages</div><div class="num" x-text="overview.messages">-</div></article>
       <article class="kpi"><div class="label">Reminders</div><div class="num" x-text="overview.reminders">-</div></article>
       <article class="kpi"><div class="label">Memory Groups</div><div class="num" x-text="overview.memory_groups">-</div></article>
-      <article class="kpi">
-        <div class="label">Service</div>
-        <div class="status"><span class="dot" :class="health.status === 'ok' ? 'ok' : 'bad'"></span><span x-text="health.status === 'ok' ? 'running' : 'unhealthy'"></span></div>
-        <div class="status" x-text="`Uptime: ${Math.floor(health.uptime_seconds || 0)}s`"></div>
-      </article>
+      <article class="kpi"><div class="label">Memory Points</div><div class="num" x-text="overview.memory_points">-</div></article>
     </section>
 
     <section class="kpi-grid">
       <article class="kpi"><div class="label" title="Amaya 启动后累计的 LLM 请求次数">LLM 调用次数</div><div class="num" x-text="metrics.llm_call_count">0</div></article>
-      <article class="kpi"><div class="label" title="LLM 请求的平均耗时（毫秒）">LLM 平均延迟 (ms)</div><div class="num" x-text="metrics.llm_avg_latency_ms">0</div></article>
+      <article class="kpi"><div class="label" title="LLM 请求的平均耗时（秒）">LLM 平均延迟 (s)</div><div class="num" x-text="formatOneDecimal(metrics.llm_avg_latency_s)">0.0</div></article>
       <article class="kpi"><div class="label" title="累计收到消息数/累计发送消息数（in/out）">消息收发计数 (入/出)</div><div class="num" x-text="`${metrics.msg_in_count}/${metrics.msg_out_count}`">0/0</div></article>
       <article class="kpi"><div class="label" title="当前事件循环中的 asyncio 任务数量">活跃协程任务数</div><div class="num" x-text="activeTasks">0</div></article>
     </section>
 
-    <section class="component-status">
-      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.db?.connected, true)"></span>DB</span>
-      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.telegram?.connected, componentStatus.telegram?.enabled)"></span>Telegram</span>
-      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.napcatqq?.connected, componentStatus.napcatqq?.enabled)"></span>NapCatQQ</span>
-      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.reminder?.running, true)"></span>Reminder</span>
-      <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.amaya?.configured, true)"></span>Amaya</span>
-    </section>
+    <article class="service-card">
+      <div class="head-row">
+        <div class="label">Service Status</div>
+        <div class="service-uptime" :class="health.status === 'ok' ? 'ok' : 'bad'">
+            <span class="dot" :class="health.status === 'ok' ? 'ok' : 'bad'"></span>
+            <span x-text="health.status === 'ok' ? 'Running' : 'Unhealthy'"></span>
+            <span class="sep">·</span>
+            <span x-text="formatUptime(health.uptime_seconds)"></span>
+        </div>
+      </div>
+      <div class="service-chips">
+        <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.amaya?.configured, true)"></span>Amaya</span>
+        <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.db?.connected, true)"></span>DB</span>
+        <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.reminder?.running, true)"></span>Reminder</span>
+        <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.telegram?.connected, componentStatus.telegram?.enabled)"></span>Telegram</span>
+        <span class="status-chip"><span class="dot" :class="componentDotClass(componentStatus.napcatqq?.connected, componentStatus.napcatqq?.enabled)"></span>NapCatQQ</span>
+      </div>
+    </article>
 
     <section class="layout">
       <article class="card pane" id="pane-left" x-show="!isCompactMobile || mobileView === 'logs'" x-cloak>
@@ -1047,8 +1095,8 @@
         resizeTimer: null,
         resizeHandler: null,
         health: { status: 'unknown', uptime_seconds: 0 },
-        overview: { messages: '-', reminders: '-', memory_groups: '-' },
-        metrics: { llm_call_count: 0, llm_avg_latency_ms: 0, msg_in_count: 0, msg_out_count: 0 },
+        overview: { messages: '-', reminders: '-', memory_groups: '-', memory_points: '-' },
+        metrics: { llm_call_count: 0, llm_avg_latency_s: 0, msg_in_count: 0, msg_out_count: 0 },
         componentStatus: {
           db: { connected: false },
           telegram: { enabled: false, connected: false },
@@ -1161,6 +1209,25 @@
           return isActive ? 'ok' : 'bad';
         },
 
+        formatOneDecimal(value) {
+          const num = Number(value);
+          if (!Number.isFinite(num)) return '0.0';
+          return num.toFixed(1);
+        },
+
+        formatUptime(seconds) {
+          if (!seconds) return '0s';
+          const s = Math.floor(seconds % 60);
+          const m = Math.floor((seconds / 60) % 60);
+          const h = Math.floor((seconds / 3600) % 24);
+          const d = Math.floor(seconds / 86400);
+          
+          if (d > 0) return `${d}d ${h}h ${m}m`;
+          if (h > 0) return `${h}h ${m}m`;
+          if (m > 0) return `${m}m ${s}s`;
+          return `${s}s`;
+        },
+
         logLevelEnabled(level) {
           return this.logs.selectedLevels.includes(level);
         },
@@ -1240,6 +1307,7 @@
             messages: data.counts?.messages ?? 0,
             reminders: data.counts?.reminders ?? 0,
             memory_groups: data.counts?.memory_groups ?? 0,
+            memory_points: data.counts?.memory_points ?? 0,
           };
         },
 
