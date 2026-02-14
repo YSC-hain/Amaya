@@ -82,7 +82,6 @@ def create_app(control: RuntimeControl) -> FastAPI:
         row = await fetch_one(
             """
             SELECT
-                (SELECT COUNT(*) FROM users) AS users,
                 (SELECT COUNT(*) FROM messages) AS messages,
                 (SELECT COUNT(*) FROM reminders) AS reminders,
                 (SELECT COUNT(*) FROM memory_groups) AS memory_groups,
@@ -91,26 +90,9 @@ def create_app(control: RuntimeControl) -> FastAPI:
         )
         return {"counts": row or {}}
 
-    @app.get("/api/v1/users")
-    async def get_users(request: Request, limit: int = 50, offset: int = 0) -> dict[str, Any]:
-        await require_admin_auth(request)
-        limit = max(1, min(limit, 500))
-        offset = max(0, offset)
-        items = await fetch_all(
-            """
-            SELECT user_id, user_name, timezone, email, telegram_user_id, qq_user_id, last_active_utc, created_at_utc, updated_at_utc
-            FROM users
-            ORDER BY user_id DESC
-            LIMIT ? OFFSET ?
-            """,
-            (limit, offset),
-        )
-        return {"items": items, "limit": limit, "offset": offset}
-
     @app.get("/api/v1/messages")
     async def get_messages(
         request: Request,
-        user_id: int | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -118,34 +100,21 @@ def create_app(control: RuntimeControl) -> FastAPI:
         limit = max(1, min(limit, 500))
         offset = max(0, offset)
 
-        if user_id is None:
-            items = await fetch_all(
-                """
-                SELECT message_id, user_id, channel, role, content, created_at_utc
-                FROM messages
-                ORDER BY message_id DESC
-                LIMIT ? OFFSET ?
-                """,
-                (limit, offset),
-            )
-        else:
-            items = await fetch_all(
-                """
-                SELECT message_id, user_id, channel, role, content, created_at_utc
-                FROM messages
-                WHERE user_id = ?
-                ORDER BY message_id DESC
-                LIMIT ? OFFSET ?
-                """,
-                (user_id, limit, offset),
-            )
+        items = await fetch_all(
+            """
+            SELECT message_id, channel, role, content, created_at_utc
+            FROM messages
+            ORDER BY message_id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
 
-        return {"items": items, "limit": limit, "offset": offset, "user_id": user_id}
+        return {"items": items, "limit": limit, "offset": offset}
 
     @app.get("/api/v1/reminders")
     async def get_reminders(
         request: Request,
-        user_id: int | None = None,
         status: str | None = None,
         limit: int = 50,
         offset: int = 0,
@@ -157,9 +126,6 @@ def create_app(control: RuntimeControl) -> FastAPI:
         where_clauses: list[str] = []
         params: list[Any] = []
 
-        if user_id is not None:
-            where_clauses.append("user_id = ?")
-            params.append(user_id)
         if status:
             where_clauses.append("status = ?")
             params.append(status)
@@ -169,7 +135,7 @@ def create_app(control: RuntimeControl) -> FastAPI:
             where_sql = "WHERE " + " AND ".join(where_clauses)
 
         sql = (
-            "SELECT reminder_id, user_id, title, remind_at_min_utc, prompt, status, next_action_at_min_utc, created_at_utc, updated_at_utc "
+            "SELECT reminder_id, title, remind_at_min_utc, prompt, status, next_action_at_min_utc, created_at_utc, updated_at_utc "
             f"FROM reminders {where_sql} ORDER BY reminder_id DESC LIMIT ? OFFSET ?"
         )
         params.extend([limit, offset])
@@ -179,14 +145,12 @@ def create_app(control: RuntimeControl) -> FastAPI:
             "items": items,
             "limit": limit,
             "offset": offset,
-            "user_id": user_id,
             "status": status,
         }
 
     @app.get("/api/v1/memory/groups")
     async def get_memory_groups(
         request: Request,
-        user_id: int | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -194,35 +158,22 @@ def create_app(control: RuntimeControl) -> FastAPI:
         limit = max(1, min(limit, 500))
         offset = max(0, offset)
 
-        if user_id is None:
-            items = await fetch_all(
-                """
-                SELECT memory_group_id, user_id, title, created_at_utc, updated_at_utc
-                FROM memory_groups
-                ORDER BY memory_group_id DESC
-                LIMIT ? OFFSET ?
-                """,
-                (limit, offset),
-            )
-        else:
-            items = await fetch_all(
-                """
-                SELECT memory_group_id, user_id, title, created_at_utc, updated_at_utc
-                FROM memory_groups
-                WHERE user_id = ?
-                ORDER BY memory_group_id DESC
-                LIMIT ? OFFSET ?
-                """,
-                (user_id, limit, offset),
-            )
+        items = await fetch_all(
+            """
+            SELECT memory_group_id, title, created_at_utc, updated_at_utc
+            FROM memory_groups
+            ORDER BY memory_group_id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
 
-        return {"items": items, "limit": limit, "offset": offset, "user_id": user_id}
+        return {"items": items, "limit": limit, "offset": offset}
 
     @app.get("/api/v1/memory/points")
     async def get_memory_points(
         request: Request,
         memory_group_id: int | None = None,
-        user_id: int | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -235,16 +186,13 @@ def create_app(control: RuntimeControl) -> FastAPI:
         if memory_group_id is not None:
             where_clauses.append("memory_group_id = ?")
             params.append(memory_group_id)
-        if user_id is not None:
-            where_clauses.append("user_id = ?")
-            params.append(user_id)
 
         where_sql = ""
         if where_clauses:
             where_sql = "WHERE " + " AND ".join(where_clauses)
 
         sql = (
-            "SELECT memory_point_id, user_id, memory_group_id, anchor, content, memory_type, weight, created_at_utc, updated_at_utc "
+            "SELECT memory_point_id, memory_group_id, anchor, content, memory_type, weight, created_at_utc, updated_at_utc "
             f"FROM memory_points {where_sql} ORDER BY memory_point_id DESC LIMIT ? OFFSET ?"
         )
         params.extend([limit, offset])
@@ -255,7 +203,6 @@ def create_app(control: RuntimeControl) -> FastAPI:
             "limit": limit,
             "offset": offset,
             "memory_group_id": memory_group_id,
-            "user_id": user_id,
         }
 
     @app.get("/api/v1/logs")

@@ -312,9 +312,9 @@
     </header>
 
     <section class="kpi-grid">
-      <article class="kpi"><div class="label">Users</div><div id="kpiUsers" class="num">-</div></article>
       <article class="kpi"><div class="label">Messages</div><div id="kpiMessages" class="num">-</div></article>
       <article class="kpi"><div class="label">Reminders</div><div id="kpiReminders" class="num">-</div></article>
+      <article class="kpi"><div class="label">Memory Groups</div><div id="kpiMemoryGroups" class="num">-</div></article>
       <article class="kpi">
         <div class="label">Service</div>
         <div class="status"><span id="healthDot" class="dot"></span><span id="healthText">checking...</span></div>
@@ -347,7 +347,7 @@
           <h2>最近消息</h2>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>时间</th><th>用户</th><th>角色</th><th>内容</th></tr></thead>
+              <thead><tr><th>时间</th><th>渠道</th><th>角色</th><th>内容</th></tr></thead>
               <tbody id="messagesBody"></tbody>
             </table>
           </div>
@@ -357,18 +357,8 @@
           <h2>最近提醒</h2>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>ID</th><th>用户</th><th>标题</th><th>状态</th></tr></thead>
+              <thead><tr><th>ID</th><th>标题</th><th>状态</th><th>触发时间</th></tr></thead>
               <tbody id="remindersBody"></tbody>
-            </table>
-          </div>
-        </article>
-
-        <article class="card">
-          <h2>用户</h2>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>时区</th><th>Telegram</th><th>QQ</th></tr></thead>
-              <tbody id="usersBody"></tbody>
             </table>
           </div>
         </article>
@@ -645,27 +635,21 @@
     async function refreshOverview() {
       const data = await api('/api/v1/overview');
       if (!data) return;
-      byId('kpiUsers').textContent = data.counts.users;
       byId('kpiMessages').textContent = data.counts.messages;
       byId('kpiReminders').textContent = data.counts.reminders;
-    }
-
-    async function refreshUsers() {
-      const data = await api('/api/v1/users?limit=20');
-      if (!data) return;
-      renderRows('usersBody', data.items, ['user_id', 'timezone', 'telegram_user_id', 'qq_user_id']);
+      byId('kpiMemoryGroups').textContent = data.counts.memory_groups;
     }
 
     async function refreshMessages() {
       const data = await api('/api/v1/messages?limit=20');
       if (!data) return;
-      renderRows('messagesBody', data.items, ['created_at_utc', 'user_id', 'role', 'content']);
+      renderRows('messagesBody', data.items, ['created_at_utc', 'channel', 'role', 'content']);
     }
 
     async function refreshReminders() {
       const data = await api('/api/v1/reminders?limit=20');
       if (!data) return;
-      renderRows('remindersBody', data.items, ['reminder_id', 'user_id', 'title', 'status']);
+      renderRows('remindersBody', data.items, ['reminder_id', 'title', 'status', 'remind_at_min_utc']);
     }
 
     async function refreshLogs() {
@@ -683,7 +667,6 @@
         await Promise.all([
           refreshHealth(),
           refreshOverview(),
-          refreshUsers(),
           refreshMessages(),
           refreshReminders(),
           refreshLogs(),
