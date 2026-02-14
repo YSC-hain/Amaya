@@ -12,10 +12,12 @@ import signal
 import sys
 
 from config.prompts import CORE_SYSTEM_PROMPT
+from datamodel import *
 from channels.telegram_polling import main as telegram_main
 from channels.qq_onebot_ws import main as qq_main
 from admin.http_server import main_loop as admin_http_main
 import core.orchestrator as orchestrator
+from core.amaya import Amaya, configure_amaya
 import world.reminder
 import storage.db_config as db_config
 from llm.base import LLMClient
@@ -46,6 +48,15 @@ def _create_llm_clients() -> tuple[LLMClient, LLMClient]:
 
     raise ValueError(f"不支持的 LLM_PROVIDER: {LLM_PROVIDER}")
 
+def _get_primary_channel() -> tuple[ChannelType, dict | None]:
+    """获取主联系方式对应的通道"""
+    if PRIMARY_CONTACT_METHOD == "telegram":
+        return ChannelType.TELEGRAM_BOT_POLLING, None
+    elif PRIMARY_CONTACT_METHOD == "qq":
+        return ChannelType.QQ_NAPCAT_ONEBOT_V11, None
+    else:
+        raise ValueError(f"不支持的主联系方式: {PRIMARY_CONTACT_METHOD}")
+
 
 async def main():
     # 注册信号处理器
@@ -53,11 +64,12 @@ async def main():
     signal.signal(signal.SIGTERM, signal_handler)
 
     smart_llm_client, fast_llm_client = _create_llm_clients()
-    amaya = orchestrator.Amaya(
+    amaya = Amaya(
         smart_llm_client=smart_llm_client,
         fast_llm_client=fast_llm_client,
+        channel=_get_primary_channel(),
     )
-    orchestrator.configure_amaya(amaya)
+    configure_amaya(amaya)
 
     await db_config.init_db("data/amaya.db")
 
