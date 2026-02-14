@@ -29,10 +29,12 @@ USER_NAME = os.getenv("USER_NAME", "User")
 USER_TIMEZONE = os.getenv("USER_TIMEZONE", "Asia/Shanghai")
 USER_EMAIL = os.getenv("USER_EMAIL", "")
 
-# 主联系方式: "telegram" 或 "qq"
+# 主联系方式: "telegram" 或 "napcatqq"（兼容 "qq"）
 PRIMARY_CONTACT_METHOD = os.getenv("PRIMARY_CONTACT_METHOD", "telegram").strip().lower()
-if PRIMARY_CONTACT_METHOD not in ("telegram", "qq"):
-    logger.critical(f"PRIMARY_CONTACT_METHOD 非法: {PRIMARY_CONTACT_METHOD}, 仅支持 telegram 或 qq")
+if PRIMARY_CONTACT_METHOD == "qq":
+    PRIMARY_CONTACT_METHOD = "napcatqq"
+if PRIMARY_CONTACT_METHOD not in ("telegram", "napcatqq"):
+    logger.critical(f"PRIMARY_CONTACT_METHOD 非法: {PRIMARY_CONTACT_METHOD}, 仅支持 telegram 或 napcatqq")
     exit(0)
 
 # Telegram Bot
@@ -47,7 +49,7 @@ if ENABLE_TELEGRAM_BOT_POLLING and PRIMARY_TELEGRAM_USER_ID == 0:
     logger.warning("未设置 PRIMARY_TELEGRAM_USER_ID")
 
 
-# QQ / NapCat
+# NapCatQQ
 ENABLE_QQ_NAPCAT = _parse_bool("ENABLE_QQ_NAPCAT", False)
 QQ_NAPCAT_WS_PATH = os.getenv("QQ_NAPCAT_WS_PATH", "/channels/qq/onebot/ws")
 QQ_NAPCAT_WS_TOKEN = os.getenv("QQ_NAPCAT_WS_TOKEN", "")

@@ -24,7 +24,7 @@ class Reminder:
 class ChannelType(str, Enum):
     AMAYA_INTERNAL = "amaya_internal"  # Amaya 内部消息通道，主要用于系统消息和世界信息
     TELEGRAM_BOT_POLLING = "telegram_bot_polling"
-    QQ_NAPCAT_ONEBOT_V11 = "qq_napcat_onebot_v11"
+    NAPCATQQ_ONEBOT_V11 = "napcatqq_onebot_v11"
     #TELEGRAM_BOT_WEBHOOK = "telegram_bot_webhook"
 
 @dataclass

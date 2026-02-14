@@ -14,7 +14,7 @@ import sys
 from config.prompts import CORE_SYSTEM_PROMPT
 from datamodel import *
 from channels.telegram_polling import main as telegram_main
-from channels.qq_onebot_ws import main as qq_main
+from channels.qq_onebot_ws import main as napcatqq_main
 from admin.http_server import main_loop as admin_http_main
 import core.orchestrator as orchestrator
 from core.amaya import Amaya, configure_amaya
@@ -52,8 +52,8 @@ def _get_primary_channel() -> tuple[ChannelType, dict | None]:
     """获取主联系方式对应的通道"""
     if PRIMARY_CONTACT_METHOD == "telegram":
         return ChannelType.TELEGRAM_BOT_POLLING, None
-    elif PRIMARY_CONTACT_METHOD == "qq":
-        return ChannelType.QQ_NAPCAT_ONEBOT_V11, None
+    elif PRIMARY_CONTACT_METHOD == "napcatqq":
+        return ChannelType.NAPCATQQ_ONEBOT_V11, None
     else:
         raise ValueError(f"不支持的主联系方式: {PRIMARY_CONTACT_METHOD}")
 
@@ -86,7 +86,7 @@ async def main():
             logger.warning("Telegram Bot Polling 已禁用")
 
         if ENABLE_QQ_NAPCAT:
-            tasks.append(qq_main(shutdown_event))
+            tasks.append(napcatqq_main(shutdown_event))
         else:
             logger.warning("NapCatQQ 通道已禁用")
 
