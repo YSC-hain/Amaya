@@ -21,7 +21,6 @@ class LLMClient(ABC):
     @abstractmethod
     async def generate_response(
         self,
-        user_id: int,
         context: List[LLMContextItem],
         append_inst: str | None = None,
         allow_tools: bool = True,

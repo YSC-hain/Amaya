@@ -5,7 +5,6 @@ import datetime
 import asyncio
 
 from config.settings import *
-import storage.user
 import telegram
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
@@ -14,7 +13,7 @@ from functools import wraps
 def requires_auth(func):
     @wraps(func)
     async def decorated(update: telegram.Update, *args, **kwargs):
-        if(update.effective_user.id not in ALLOWED_TELEGRAM_USER_IDS and ALLOWED_TELEGRAM_USER_IDS != []):
+        if update.effective_user.id != PRIMARY_TELEGRAM_USER_ID:
             logger.warning(f"用户 {update.effective_user.id} 未经允许访问 Bot")
             await update.message.reply_text("您无权使用此 Bot。如有需要, 请联系管理员。")
         else:
@@ -49,48 +48,40 @@ async def start_sending_typing_loop(msg: IncomingMessage) -> None:
 
     chat_id = msg.metadata["channel_chat_id"]
     task = asyncio.create_task(_send_typing_loop(msg.channel_context.bot, chat_id))
-    _typing_tasks[msg.user_id] = task
+    _typing_tasks[chat_id] = task
 
 @bus.on(E.IO_SEND_MESSAGE)
 async def stop_sending_typing_loop(msg: OutgoingMessage) -> None:
     """停止发送正在输入动作的循环任务"""
     if msg.channel_type != ChannelType.TELEGRAM_BOT_POLLING:
         return
+    if not msg.metadata or "channel_chat_id" not in msg.metadata:
+        return
 
-    task = _typing_tasks.get(msg.user_id)
+    chat_id = msg.metadata["channel_chat_id"]
+    task = _typing_tasks.get(chat_id)
     if task:
         task.cancel()
         try:
             await task
         except asyncio.CancelledError:
             pass
-        del _typing_tasks[msg.user_id]
+        del _typing_tasks[chat_id]
 
 
 @requires_auth
 async def cmd_start(update: telegram.Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info(f"收到 /start 命令来自 Telegram ID: {update.effective_user.id}")
-    await storage.user.create_user_if_not_exists(update.effective_user.id)
     await update.message.reply_text("Amaya bot online.")
 
 @requires_auth
 async def process_message(update: telegram.Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # 预处理
-    user = await storage.user.get_user_by_telegram_id(update.effective_user.id)
-    if user is not None:
-        user_id = user.user_id
-    else:
-        logger.error(f"Telegram User ID: {update.effective_user.id} 在未注册时发送消息")
-        await update.message.reply_text("您尚未注册，请发送 /start 命令以注册")
-        return
-
-    logger.info(f"User ID: {user_id} 消息内容: {update.message.text}")
+    logger.info(f"Telegram 消息内容: {update.message.text}")
 
     # 发送到事件总线
     if update.message and update.message.text:
         incoming_msg = IncomingMessage(
             channel_type = ChannelType.TELEGRAM_BOT_POLLING,
-            user_id = user_id,
             content = update.message.text,
             channel_context = context,
             timestamp = update.message.date,
@@ -104,22 +95,23 @@ async def send_outgoing_message(msg: OutgoingMessage) -> None:
     if msg.channel_type != ChannelType.TELEGRAM_BOT_POLLING:
         return
 
-    logger.info(f"发送消息给用户 {msg.user_id}: {msg.content}")
-    user = await storage.user.get_user_by_id(msg.user_id)
-    if user is not None:
-        chat_id = user.telegram_user_id
-        bot = _bot_instance or msg.channel_context.bot
+    logger.info(f"发送消息: {msg.content}")
+    
+    # 使用元数据中的 chat_id 或默认使用 PRIMARY_TELEGRAM_USER_ID
+    chat_id = msg.metadata.get("channel_chat_id") if msg.metadata else None
+    if chat_id is None:
+        chat_id = PRIMARY_TELEGRAM_USER_ID
+    
+    bot = _bot_instance or msg.channel_context.bot
+    try:
+        await bot.send_message(chat_id=chat_id, text=msg.content)
+    except Exception as e:
+        logger.error(f"向 Telegram 用户 {chat_id} 发送消息失败: {e}, 即将重试", exc_info=e)
         try:
+            await asyncio.sleep(5)
             await bot.send_message(chat_id=chat_id, text=msg.content)
         except Exception as e:
-            logger.error(f"向 Telegram 用户 {chat_id} 发送消息失败: {e}, 即将重试", exc_info=e)
-            try:
-                await asyncio.sleep(5)
-                await bot.send_message(chat_id=chat_id, text=msg.content)
-            except Exception as e:
-                logger.error(f"[重试] 向 Telegram 用户 {chat_id} 发送消息失败: {e}", exc_info=e)
-    else:
-        logger.error(f"无法找到 user_id: {msg.user_id} 对应的 Telegram 用户")
+            logger.error(f"[重试] 向 Telegram 用户 {chat_id} 发送消息失败: {e}", exc_info=e)
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -37,8 +37,6 @@ async def auto_execute_tool(function_call: FunctionCall) -> str:
         return "This tool is not registered and cannot be executed."
 
     logger.trace(f"调用工具: {function_call.name}, 参数: {function_call.arguments}")
-    if function_call.arguments.get("user_id") is None:
-        logger.warning(f"调用工具 {function_call.name} 时未提供 user_id 参数，可能无法正确执行")
     
     return await tool.execute(**function_call.arguments)
 

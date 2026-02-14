@@ -13,35 +13,34 @@ def _ensure_conn():
         raise RuntimeError("数据库未初始化，请先调用 init_db()")
 
 
-async def create_memory_group(user_id: int, title: str) -> int:
+async def create_memory_group(title: str) -> int:
     """创建记忆组，返回记忆组 ID"""
     _ensure_conn()
     async with db_config.conn.execute(
-        "SELECT COUNT(*) FROM memory_groups WHERE user_id = ? AND title = ?",
-        (user_id, title)
+        "SELECT COUNT(*) FROM memory_groups WHERE title = ?",
+        (title,)
     ) as cursor:
         row = await cursor.fetchone()
         if row[0] > 0:
-            logger.warning(f"LLM 试图创建已存在的记忆组: user_id={user_id}, title={title}")
+            logger.warning(f"LLM 试图创建已存在的记忆组: title={title}")
             return -1
 
     async with db_config.conn.execute(
-        "INSERT INTO memory_groups (user_id, title) VALUES (?, ?)",
-        (user_id, title)
+        "INSERT INTO memory_groups (title) VALUES (?)",
+        (title,)
     ) as cursor:
         await db_config.conn.commit()
         group_id = cursor.lastrowid
-        logger.trace(f"创建记忆组: user_id={user_id}, title={title}, memory_group_id={group_id}")
+        logger.trace(f"创建记忆组: title={title}, memory_group_id={group_id}")
         return group_id
 
 
-async def list_memory_groups_by_user_id(user_id: int) -> list[dict]:
-    """列出用户的所有记忆组"""
+async def list_memory_groups() -> list[dict]:
+    """列出所有记忆组"""
     _ensure_conn()
     groups = []
     async with db_config.conn.execute(
-        "SELECT memory_group_id, title, created_at_utc FROM memory_groups WHERE user_id = ?",
-        (user_id,)
+        "SELECT memory_group_id, title, created_at_utc FROM memory_groups"
     ) as cursor:
         async for row in cursor:
             groups.append({
@@ -79,26 +78,26 @@ async def delete_memory_group_by_id(memory_group_id: int) -> None:
 
 
 
-async def create_memory_point(user_id: int, memory_group_title: str, anchor: str, content: str, memory_type: str, weight: float) -> int:
+async def create_memory_point(memory_group_title: str, anchor: str, content: str, memory_type: str, weight: float) -> int:
     """添加记忆点，返回记忆点 ID"""
     _ensure_conn()
     async with db_config.conn.execute(
-        "SELECT memory_group_id FROM memory_groups WHERE user_id = ? AND title = ?",
-        (user_id, memory_group_title)
+        "SELECT memory_group_id FROM memory_groups WHERE title = ?",
+        (memory_group_title,)
     ) as cursor:
         row = await cursor.fetchone()
         if row is None:
-            logger.error(f"LLM 试图在不存在的记忆组中添加记忆点: user_id={user_id}, memory_group_title={memory_group_title}")
+            logger.error(f"LLM 试图在不存在的记忆组中添加记忆点: memory_group_title={memory_group_title}")
             return -1
         memory_group_id = row[0]
 
     async with db_config.conn.execute(
-        "INSERT INTO memory_points (user_id, memory_group_id, anchor, content, memory_type, weight) VALUES (?, ?, ?, ?, ?, ?)",
-        (user_id, memory_group_id, anchor, content, memory_type, weight)
+        "INSERT INTO memory_points (memory_group_id, anchor, content, memory_type, weight) VALUES (?, ?, ?, ?, ?)",
+        (memory_group_id, anchor, content, memory_type, weight)
     ) as cursor:
         await db_config.conn.commit()
         point_id = cursor.lastrowid
-        logger.trace(f"添加记忆点: user_id={user_id}, memory_group_id={memory_group_id}, anchor={anchor}, point_id={point_id}, memory_type={memory_type}, weight={weight}")
+        logger.trace(f"添加记忆点: memory_group_id={memory_group_id}, anchor={anchor}, point_id={point_id}, memory_type={memory_type}, weight={weight}")
         return point_id
 
 
@@ -113,21 +112,21 @@ async def edit_memory_point_weight_by_id(memory_point_id: int, new_weight: float
     logger.trace(f"修改记忆点权重: memory_point_id={memory_point_id}, new_weight={new_weight}")
 
 
-async def edit_memory_point_content_by_id(user_id: int, memory_point_id: int, new_content: str) -> bool:
+async def edit_memory_point_content_by_id(memory_point_id: int, new_content: str) -> bool:
     """修改记忆点内容"""
     _ensure_conn()
     async with db_config.conn.execute(
-        "SELECT COUNT(*) FROM memory_points WHERE memory_point_id = ? AND user_id = ?",
-        (memory_point_id, user_id)
+        "SELECT COUNT(*) FROM memory_points WHERE memory_point_id = ?",
+        (memory_point_id,)
     ) as cursor:
         row = await cursor.fetchone()
         if row[0] == 0:
-            logger.error(f"LLM 试图修改不存在的记忆点内容: user_id={user_id}, memory_point_id={memory_point_id}")
+            logger.error(f"LLM 试图修改不存在的记忆点内容: memory_point_id={memory_point_id}")
             return False
 
     await db_config.conn.execute(
-        "UPDATE memory_points SET content = ? WHERE memory_point_id = ? AND user_id = ?",
-        (new_content, memory_point_id, user_id)
+        "UPDATE memory_points SET content = ? WHERE memory_point_id = ?",
+        (new_content, memory_point_id)
     )
     await db_config.conn.commit()
     logger.trace(f"修改记忆点内容: memory_point_id={memory_point_id}, new_content={new_content}")

@@ -219,7 +219,6 @@ class GeminiClient(LLMClient):
 
     async def generate_response(
         self,
-        user_id: int,
         context: List[LLMContextItem],
         append_inst: str | None = None,
         allow_tools: bool = True,
@@ -297,7 +296,6 @@ class GeminiClient(LLMClient):
 
             for name, arguments in function_calls:
                 call_arguments = dict(arguments)
-                call_arguments["user_id"] = user_id
                 result = await auto_execute_tool(FunctionCall(name=name, arguments=call_arguments))
                 request_context.append({
                     "role": "user",

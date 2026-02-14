@@ -1,5 +1,20 @@
 from __future__ import annotations
 
+"""
+NapCatQQ OneBot 反向WS通道
+
+通信协议参考资料(部分):
+https://napneko.github.io/
+https://napneko.github.io/use/integration
+https://napneko.github.io/guide/config/basic
+https://napneko.github.io/protocol/authorization
+https://napneko.github.io/onebot/api
+https://napneko.github.io/onebot/event/
+https://node-napcat-ts.huankong.top/guide/how-to-use
+https://node-napcat-ts.huankong.top/guide/bind-event
+https://node-napcat-ts.huankong.top/guide/call-api
+"""
+
 import asyncio
 import datetime
 import hmac
@@ -9,17 +24,10 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from config.settings import (
-    ALLOWED_QQ_USER_IDS,
-    QQ_NAPCAT_ENABLE_GROUP,
-    QQ_NAPCAT_SEND_TIMEOUT_SECONDS,
-    QQ_NAPCAT_WS_PATH,
-    QQ_NAPCAT_WS_TOKEN,
-)
+from config.settings import *
 from datamodel import ChannelType, IncomingMessage, OutgoingMessage
 from events import E, bus
 from logger import logger
-import storage.user
 
 
 class _NapCatSession:
@@ -191,7 +199,8 @@ async def _handle_message_event(payload: dict[str, Any]) -> None:
     if self_id is not None and qq_user_id == self_id:
         return
 
-    if ALLOWED_QQ_USER_IDS != [] and qq_user_id not in ALLOWED_QQ_USER_IDS:
+    # 检查是否是主用户
+    if qq_user_id != PRIMARY_QQ_USER_ID:
         logger.warning(f"QQ 用户 {qq_user_id} 未经允许访问 Bot")
         if message_type == "private":
             await _safe_reject_private_user(qq_user_id)
@@ -199,12 +208,6 @@ async def _handle_message_event(payload: dict[str, Any]) -> None:
 
     content = _extract_text_content(payload.get("message"), payload.get("raw_message"))
     if content == "":
-        return
-
-    await storage.user.create_user_if_not_exists_by_qq(qq_user_id)
-    user = await storage.user.get_user_by_qq_id(qq_user_id)
-    if user is None:
-        logger.error(f"QQ 用户映射失败: qq_user_id={qq_user_id}")
         return
 
     timestamp: datetime.datetime | None = None
@@ -224,7 +227,6 @@ async def _handle_message_event(payload: dict[str, Any]) -> None:
 
     bus.emit(E.IO_MESSAGE_RECEIVED, IncomingMessage(
         channel_type=ChannelType.QQ_NAPCAT_ONEBOT_V11,
-        user_id=user.user_id,
         content=content,
         channel_context=None,
         metadata=metadata,
@@ -292,26 +294,25 @@ async def send_outgoing_message(msg: OutgoingMessage) -> None:
     if msg.channel_type != ChannelType.QQ_NAPCAT_ONEBOT_V11:
         return
 
-    user = await storage.user.get_user_by_id(msg.user_id)
-    if user is None or user.qq_user_id is None:
-        logger.error(f"无法找到 user_id={msg.user_id} 对应的 QQ 用户")
-        return
-
+    qq_user_id = msg.metadata.get("qq_user_id") if msg.metadata else None
+    if qq_user_id is None:
+        qq_user_id = PRIMARY_QQ_USER_ID
+    
     qq_group_id = _to_int(msg.metadata.get("qq_group_id")) if msg.metadata else None
 
     try:
         if qq_group_id is not None:
             await _send_action("send_group_msg", {"group_id": qq_group_id, "message": msg.content})
         else:
-            await _send_action("send_private_msg", {"user_id": user.qq_user_id, "message": msg.content})
+            await _send_action("send_private_msg", {"user_id": qq_user_id, "message": msg.content})
     except Exception as e:
-        logger.error(f"向 QQ 用户发送消息失败: user_id={msg.user_id}, error={e}, 即将重试", exc_info=e)
+        logger.error(f"向 QQ 用户发送消息失败: error={e}, 即将重试", exc_info=e)
         try:
             await asyncio.sleep(2)
             if qq_group_id is not None:
                 await _send_action("send_group_msg", {"group_id": qq_group_id, "message": msg.content})
             else:
-                await _send_action("send_private_msg", {"user_id": user.qq_user_id, "message": msg.content})
+                await _send_action("send_private_msg", {"user_id": qq_user_id, "message": msg.content})
         except Exception as e2:
             logger.error(f"[重试] 向 QQ 用户发送消息失败: user_id={msg.user_id}, error={e2}", exc_info=e2)
 

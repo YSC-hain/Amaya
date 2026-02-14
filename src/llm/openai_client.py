@@ -62,7 +62,7 @@ class OpenAIClient(LLMClient):
 
     async def generate_response(
         self,
-        user_id: int,
+
         context: List[LLMContextItem],
         append_inst: str | None = None,
         allow_tools: bool = True, # 未来应该拓展为“允许使用的工具集”
@@ -101,7 +101,6 @@ class OpenAIClient(LLMClient):
                     request_context.append(item)
 
                     arguments = json.loads(item.arguments)
-                    arguments["user_id"] = user_id  # 附加 user_id 参数
                     res = await auto_execute_tool(FunctionCall(name=item.name, arguments=arguments))
                     request_context.append({
                         "type": "function_call_output",

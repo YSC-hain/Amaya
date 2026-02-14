@@ -30,8 +30,8 @@ class CreateMemoryGroup(BaseFunction):
             }
         }
 
-    async def execute(self, user_id: int, title: str) -> str:
-        res = await work_memory_storage.create_memory_group(user_id, title)
+    async def execute(self, title: str) -> str:
+        res = await work_memory_storage.create_memory_group(title)
         if res == -1:
             return f"Creation failed. Memory group with title '{title}' already exists."
         else:
@@ -76,8 +76,8 @@ class CreateMemoryPoint(BaseFunction):
             }
         }
 
-    async def execute(self, user_id: int, memory_group_title: str, anchor: str, content: str, memory_type: str, weight: float = 1.0) -> str:
-        res = await work_memory_storage.create_memory_point(user_id, memory_group_title, anchor, content, memory_type, weight)
+    async def execute(self, memory_group_title: str, anchor: str, content: str, memory_type: str, weight: float = 1.0) -> str:
+        res = await work_memory_storage.create_memory_point(memory_group_title, anchor, content, memory_type, weight)
         if res == -1:
             return f"Creation failed. Memory group with title '{memory_group_title}' does not exist."
         else:
@@ -109,8 +109,8 @@ class EditMemoryPointContent(BaseFunction):
             }
         }
 
-    async def execute(self, user_id: int, memory_point_id: int, new_content: str) -> str:
-        res = await work_memory_storage.edit_memory_point_content_by_id(user_id, memory_point_id, new_content)
+    async def execute(self, memory_point_id: int, new_content: str) -> str:
+        res = await work_memory_storage.edit_memory_point_content_by_id(memory_point_id, new_content)
         if res is False:
             return f"Edit failed. Memory point with ID '{memory_point_id}' does not exist."
         else:

@@ -8,20 +8,19 @@ def _ensure_conn():
     if db_config.conn is None:
         raise RuntimeError("数据库未初始化，请先调用 init_db()")
 
-async def create_reminder(user_id: int, title: str, remind_at_min_utc: str, prompt: str) -> Reminder:
+async def create_reminder(title: str, remind_at_min_utc: str, prompt: str) -> Reminder:
     """创建提醒"""
     _ensure_conn()
     async with db_config.conn.execute(
-        "INSERT INTO reminders (user_id, title, remind_at_min_utc, prompt, status, next_action_at_min_utc) VALUES (?, ?, ?, ?, ?, ?)",
-        (user_id, title, remind_at_min_utc, prompt, "pending", remind_at_min_utc)
+        "INSERT INTO reminders (title, remind_at_min_utc, prompt, status, next_action_at_min_utc) VALUES (?, ?, ?, ?, ?)",
+        (title, remind_at_min_utc, prompt, "pending", remind_at_min_utc)
     ) as cursor:
         await db_config.conn.commit()
         reminder_id = cursor.lastrowid
-        bus.emit(E.REMINDER_CREATED, reminder_id=reminder_id, user_id=user_id, title=title, remind_at_min_utc=remind_at_min_utc, prompt=prompt)
-        logger.trace(f"创建提醒: user_id={user_id}, title={title}, remind_at_min_utc={remind_at_min_utc}, reminder_id={reminder_id}")
+        bus.emit(E.REMINDER_CREATED, reminder_id=reminder_id, title=title, remind_at_min_utc=remind_at_min_utc, prompt=prompt)
+        logger.trace(f"创建提醒: title={title}, remind_at_min_utc={remind_at_min_utc}, reminder_id={reminder_id}")
         return Reminder(
             reminder_id=reminder_id,
-            user_id=user_id,
             title=title,
             remind_at_min_utc=remind_at_min_utc,
             prompt=prompt,
@@ -33,39 +32,17 @@ async def get_pending_reminders() -> list[Reminder]:
     """获取所有未触发的提醒"""
     _ensure_conn()
     async with db_config.conn.execute(
-        "SELECT reminder_id, user_id, title, remind_at_min_utc, prompt, status, next_action_at_min_utc FROM reminders WHERE status = 'pending'"
+        "SELECT reminder_id, title, remind_at_min_utc, prompt, status, next_action_at_min_utc FROM reminders WHERE status = 'pending'"
     ) as cursor:
         rows = await cursor.fetchall()
         return [
             Reminder(
                 reminder_id=row[0],
-                user_id=row[1],
-                title=row[2],
-                remind_at_min_utc=row[3],
-                prompt=row[4],
-                status=row[5],
-                next_action_at_min_utc=row[6]
-            )
-            for row in rows
-        ]
-
-async def get_pending_reminders_by_user_id(user_id: int) -> list[Reminder]:
-    """通过用户 ID 获取该用户所有未触发的提醒"""
-    _ensure_conn()
-    async with db_config.conn.execute(
-        "SELECT reminder_id, user_id, title, remind_at_min_utc, prompt, status, next_action_at_min_utc FROM reminders WHERE status = 'pending' AND user_id = ?",
-        (user_id,)
-    ) as cursor:
-        rows = await cursor.fetchall()
-        return [
-            Reminder(
-                reminder_id=row[0],
-                user_id=row[1],
-                title=row[2],
-                remind_at_min_utc=row[3],
-                prompt=row[4],
-                status=row[5],
-                next_action_at_min_utc=row[6]
+                title=row[1],
+                remind_at_min_utc=row[2],
+                prompt=row[3],
+                status=row[4],
+                next_action_at_min_utc=row[5]
             )
             for row in rows
         ]
@@ -75,19 +52,18 @@ async def get_reminders_need_action_now() -> list[Reminder]:
     _ensure_conn()
 
     async with db_config.conn.execute(
-        "SELECT reminder_id, user_id, title, remind_at_min_utc, prompt, status, next_action_at_min_utc FROM reminders WHERE (next_action_at_min_utc NOT NULL) AND next_action_at_min_utc <= ?",
+        "SELECT reminder_id, title, remind_at_min_utc, prompt, status, next_action_at_min_utc FROM reminders WHERE (next_action_at_min_utc NOT NULL) AND next_action_at_min_utc <= ?",
         (now_utc_min_str(),)
     ) as cursor:
         rows = await cursor.fetchall()
         return [
             Reminder(
                 reminder_id=row[0],
-                user_id=row[1],
-                title=row[2],
-                remind_at_min_utc=row[3],
-                prompt=row[4],
-                status=row[5],
-                next_action_at_min_utc=row[6]
+                title=row[1],
+                remind_at_min_utc=row[2],
+                prompt=row[3],
+                status=row[4],
+                next_action_at_min_utc=row[5]
             )
             for row in rows
         ]

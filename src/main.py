@@ -1,7 +1,8 @@
 from logger import setup_logging, logger
+from config.settings import *
 setup_logging(
     log_level="TRACE",
-    log_file="logs/amaya.log",
+    log_file=ADMIN_LOG_FILE,
     console_level="INFO",
 )
 
@@ -11,11 +12,10 @@ import signal
 import sys
 
 from config.prompts import CORE_SYSTEM_PROMPT
-from config.settings import *
 from channels.telegram_polling import main as telegram_main
 from channels.qq_onebot_ws import main as qq_main
 from admin.http_server import main_loop as admin_http_main
-import core.orchestrator
+import core.orchestrator as orchestrator
 import world.reminder
 import storage.db_config as db_config
 from llm.base import LLMClient
@@ -53,19 +53,18 @@ async def main():
     signal.signal(signal.SIGTERM, signal_handler)
 
     smart_llm_client, fast_llm_client = _create_llm_clients()
-    amaya_manager = core.orchestrator.AmayaManager(
+    amaya = orchestrator.Amaya(
         smart_llm_client=smart_llm_client,
         fast_llm_client=fast_llm_client,
     )
-    core.orchestrator.configure_amaya_manager(amaya_manager)
+    orchestrator.configure_amaya(amaya)
 
     await db_config.init_db("data/amaya.db")
 
-
     try:
         tasks = [
-            core.orchestrator.main_loop(shutdown_event),
             world.reminder.main_loop(shutdown_event),
+            amaya.run_loop(shutdown_event),
             admin_http_main(shutdown_event, restart_event),
         ]
 
@@ -81,8 +80,7 @@ async def main():
 
         await asyncio.gather(*tasks)
     finally:
-        logger.info("关闭 AmayaManager...")
-        await amaya_manager.shutdown()
+        logger.info("关闭 Amaya...")
 
         logger.info("关闭数据库连接...")
         if db_config.conn is not None:

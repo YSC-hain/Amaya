@@ -3,7 +3,6 @@ from config.settings import *
 from events import bus, E
 from functions.base import *
 import storage.reminder as reminder_storage
-import storage.user as user_storage
 from utils import *
 
 class CreateReminder(BaseFunction):
@@ -33,12 +32,10 @@ class CreateReminder(BaseFunction):
             }
         }
 
-    async def execute(self, user_id: int, title: str, time: str, prompt: str):
-        user_info = await user_storage.get_user_by_id(user_id)
-        remind_at_min_utc = user_local_min_to_utc_min_str(time, user_info.timezone)
+    async def execute(self, title: str, time: str, prompt: str):
+        remind_at_min_utc = user_local_min_to_utc_min_str(time, USER_TIMEZONE)
 
         reminder = await reminder_storage.create_reminder(
-            user_id=user_id,
             title=title,
             remind_at_min_utc=remind_at_min_utc,
             prompt=prompt

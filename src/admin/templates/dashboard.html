@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Amaya 管理台</title>
+  <title>Amaya 控制台</title>
   <style>
     :root {
       --bg: #0f1114;
@@ -302,8 +302,7 @@
   <div class="wrap">
     <header class="topbar">
       <div class="title">
-        <h1>Amaya 管理台</h1>
-        <p>内部使用</p>
+        <h1>Amaya 控制台</h1>
       </div>
       <div class="actions">
         <button id="btnRefresh">刷新</button>
@@ -333,6 +332,7 @@
             <option>WARNING</option><option>ERROR</option><option>CRITICAL</option>
           </select>
           <select id="logLines">
+            <option value="200">100 行</option>
             <option value="200">200 行</option>
             <option value="500" selected>500 行</option>
             <option value="1000">1000 行</option>

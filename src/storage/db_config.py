@@ -1,18 +1,7 @@
 import aiosqlite
 import os
 
-
 conn: aiosqlite.Connection | None = None
-
-
-async def _column_exists(table: str, column: str) -> bool:
-    global conn
-    async with conn.execute(f"PRAGMA table_info({table})") as cursor:
-        async for row in cursor:
-            if row[1] == column:
-                return True
-    return False
-
 
 async def init_db(db_path: str) -> None:
     db_dir = os.path.dirname(db_path)
@@ -36,13 +25,6 @@ async def init_db(db_path: str) -> None:
                 init_sql = f.read()
                 await conn.executescript(init_sql)
 
-        if user_version < 2:
-            if not await _column_exists("users", "qq_user_id"):
-                await conn.execute("ALTER TABLE users ADD COLUMN qq_user_id INTEGER")
-            await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_qq_user_id ON users (qq_user_id)")
-            await conn.execute("PRAGMA user_version = 2")
-
-        # 数据库升级逻辑可以在这里继续添加
         await conn.commit()
 
 __all__ = ["conn", "init_db"]

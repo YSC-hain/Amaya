@@ -22,9 +22,10 @@ async def main_loop(shutdown_event: asyncio.Event):
         reminders_to_process: List[Reminder] = await reminder_storage.get_reminders_need_action_now()
         for reminder in reminders_to_process:
             bus.emit(E.REMINDER_TRIGGERED, reminder=reminder)
-            reminder.status = "sent"
+            reminder.status = "triggered"
             reminder.next_action_at_min_utc = None
+            await reminder_storage.update_reminder(reminder)  # ToDo: 将状态更新放到事件处理器里
 
-        await asyncio.sleep(25)  # 每25秒检查一次，可能需要改进
+        await asyncio.sleep(5)  # 每5秒检查一次，可能需要改进
 
     logger.info("Reminder 主循环已关闭")
