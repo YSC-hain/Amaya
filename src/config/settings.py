@@ -57,12 +57,24 @@ except ValueError:
 
 
 # LLM 设置
-OPENAI_PRIMARY_API_KEY = os.getenv("OPENAI_PRIMARY_API_KEY")
-if OPENAI_PRIMARY_API_KEY == None:
-    logger.critical("OPENAI_API_KEY 未设置")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").strip().lower()
+if LLM_PROVIDER not in ("openai", "gemini"):
+    logger.critical(f"LLM_PROVIDER 非法: {LLM_PROVIDER}, 仅支持 openai 或 gemini")
     exit(0)
 
+OPENAI_PRIMARY_API_KEY = os.getenv("OPENAI_PRIMARY_API_KEY")
 OPENAI_PRIMARY_BASE_URL = os.getenv("OPENAI_PRIMARY_BASE_URL", "https://api.openai.com/v1")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL")
+
+if LLM_PROVIDER == "openai" and OPENAI_PRIMARY_API_KEY is None:
+    logger.critical("当前 LLM_PROVIDER=openai, 但 OPENAI_PRIMARY_API_KEY 未设置")
+    exit(0)
+
+if LLM_PROVIDER == "gemini" and GEMINI_API_KEY is None:
+    logger.critical("当前 LLM_PROVIDER=gemini, 但 GEMINI_API_KEY 未设置")
+    exit(0)
+
 LLM_MAIN_MODEL = os.getenv("LLM_MAIN_MODEL", "gpt-5.2")
 LLM_FAST_MODEL = os.getenv("LLM_FAST_MODEL", "gpt-5-nano")
 
@@ -83,7 +95,8 @@ __all__ = [
     "TELEGRAM_BOT_TOKEN", "ALLOWED_TELEGRAM_USER_IDS", "ADMIN_TELEGRAM_USER_ID",
     "ENABLE_QQ_NAPCAT", "QQ_NAPCAT_WS_PATH", "QQ_NAPCAT_WS_TOKEN",
     "ALLOWED_QQ_USER_IDS", "QQ_NAPCAT_ENABLE_GROUP", "QQ_NAPCAT_SEND_TIMEOUT_SECONDS",
-    "OPENAI_PRIMARY_API_KEY", "OPENAI_PRIMARY_BASE_URL", "LLM_MAIN_MODEL", "LLM_FAST_MODEL",
+    "LLM_PROVIDER", "OPENAI_PRIMARY_API_KEY", "OPENAI_PRIMARY_BASE_URL", "GEMINI_API_KEY", "GEMINI_BASE_URL",
+    "LLM_MAIN_MODEL", "LLM_FAST_MODEL",
     "DEDEFAULT_TIMEZONE",
     "ADMIN_HTTP_HOST", "ADMIN_HTTP_PORT", "ADMIN_AUTH_TOKEN",
     "WEBHOOK_SHARED_SECRET", "ADMIN_LOG_FILE",

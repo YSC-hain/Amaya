@@ -12,7 +12,7 @@ def _ensure_conn():
 async def create_message(user_id: int, channel: str, role: str, content: str) -> int:
     """创建新消息记录，返回消息 ID"""
     _ensure_conn()
-    if role not in ("user", "amaya", "assistant"):
+    if role not in ("system", "world", "user", "amaya"):
         logger.error(f"无效的消息角色: {role}, 该消息不会存入数据库")
         return
 

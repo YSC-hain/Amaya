@@ -10,9 +10,11 @@ dependencies = [
     "python-dotenv",
     "pyee",
     "openai",
+    "google-genai",
     "aiosqlite",
     "watchdog",
     "python-ulid",
     "fastapi",
     "uvicorn",
+    "websockets",
 ]

@@ -10,13 +10,15 @@ import os
 import signal
 import sys
 
-from config.settings import ENABLE_QQ_NAPCAT, ENABLE_TELEGRAM_BOT_POLLING
+from config.prompts import CORE_SYSTEM_PROMPT
+from config.settings import *
 from channels.telegram_polling import main as telegram_main
 from channels.qq_onebot_ws import main as qq_main
 from admin.http_server import main_loop as admin_http_main
 import core.orchestrator
 import world.reminder
 import storage.db_config as db_config
+from llm.base import LLMClient
 
 shutdown_event = asyncio.Event()
 restart_event = asyncio.Event()
@@ -26,12 +28,39 @@ def signal_handler(sig, frame):
     logger.info("收到中断信号,正在依次关闭组件...")
     shutdown_event.set()
 
+def _create_llm_clients() -> tuple[LLMClient, LLMClient]:
+    """临时函数，根据配置创建 LLM 客户端实例"""
+    if LLM_PROVIDER == "openai":
+        from llm.openai_client import OpenAIClient
+
+        smart_llm_client = OpenAIClient(model=LLM_MAIN_MODEL, inst=CORE_SYSTEM_PROMPT)
+        fast_llm_client = OpenAIClient(model=LLM_FAST_MODEL, inst=CORE_SYSTEM_PROMPT)
+        return smart_llm_client, fast_llm_client
+
+    if LLM_PROVIDER == "gemini":
+        from llm.gemini_client import GeminiClient
+
+        smart_llm_client = GeminiClient(model=LLM_MAIN_MODEL, inst=CORE_SYSTEM_PROMPT)
+        fast_llm_client = GeminiClient(model=LLM_FAST_MODEL, inst=CORE_SYSTEM_PROMPT)
+        return smart_llm_client, fast_llm_client
+
+    raise ValueError(f"不支持的 LLM_PROVIDER: {LLM_PROVIDER}")
+
+
 async def main():
     # 注册信号处理器
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
+    smart_llm_client, fast_llm_client = _create_llm_clients()
+    amaya_manager = core.orchestrator.AmayaManager(
+        smart_llm_client=smart_llm_client,
+        fast_llm_client=fast_llm_client,
+    )
+    core.orchestrator.configure_amaya_manager(amaya_manager)
+
     await db_config.init_db("data/amaya.db")
+
 
     try:
         tasks = [
@@ -39,17 +68,22 @@ async def main():
             world.reminder.main_loop(shutdown_event),
             admin_http_main(shutdown_event, restart_event),
         ]
+
         if ENABLE_TELEGRAM_BOT_POLLING:
             tasks.append(telegram_main(shutdown_event))
         else:
             logger.warning("Telegram Bot Polling 已禁用")
+
         if ENABLE_QQ_NAPCAT:
             tasks.append(qq_main(shutdown_event))
         else:
-            logger.warning("QQ/NapCat 通道已禁用")
+            logger.warning("NapCatQQ 通道已禁用")
 
         await asyncio.gather(*tasks)
     finally:
+        logger.info("关闭 AmayaManager...")
+        await amaya_manager.shutdown()
+
         logger.info("关闭数据库连接...")
         if db_config.conn is not None:
             await db_config.conn.close()
