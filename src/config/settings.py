@@ -25,9 +25,12 @@ def _parse_bool(name: str, default: bool = False) -> bool:
 
 # 动态加载的环境变量
 # 用户个人信息
-USER_NAME = os.getenv("USER_NAME", "User")
+USER_NAME = os.getenv("USER_NAME")
 USER_TIMEZONE = os.getenv("USER_TIMEZONE", "Asia/Shanghai")
 USER_EMAIL = os.getenv("USER_EMAIL", "")
+if USER_NAME is None:
+    logger.warning("USER_NAME 未设置，会严重影响效果")
+    USER_NAME = "用户"
 
 # 主联系方式: "telegram" 或 "napcatqq"（兼容 "qq"）
 PRIMARY_CONTACT_METHOD = os.getenv("PRIMARY_CONTACT_METHOD", "telegram").strip().lower()
